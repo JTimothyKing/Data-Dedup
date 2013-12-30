@@ -2,6 +2,8 @@ use strict;
 use warnings;
 use mop;
 
+use Scalar::Util 'blessed';
+
 =head1 NAME
 
 DeDup::Engine - A general-purpose deduplication engine
@@ -35,51 +37,92 @@ DeDup::Engine - A general-purpose deduplication engine
 =cut
 
 class DeDup::Engine {
-    has $!blocking is ro;
+    has $!blocking is ro; # a sub or array of subs
 
-    has $!_blocks = [];
-    has $!_blocks_by_key = {};
-    has $!_block_without_key;
+
+    class DeDup::Engine::Block is repr('HASH') {
+        has $!keys = [];
+        has $!objects = [];
+
+        method _sync_repr {
+            $self->{keys} = $!keys;
+            $self->{objects} = $!objects;
+        }
+
+        method BUILD { $self->_sync_repr }
+
+        method keys { $!keys }
+        method add_keys(@keys) { push @{$!keys}, @keys; $self->_sync_repr; $!keys }
+        method key($idx) { $!keys->[$idx] }
+
+        method objects { $!objects }
+        method add_objects(@objects) { push @{$!objects}, @objects; $self->_sync_repr; $!objects }
+        method object($idx) { $!objects->[$idx] }
+    }
+
+    has $!_blocks = []; # an array of Block objects
+
+
+    class DeDup::Engine::BlockKeyStore {
+        has $!_keyhash = {};
+
+        method set($key, $content) { $!_keyhash->{$key} = $content }
+
+        # Returns a reference to the key slot within the key store
+        method get_ref($key) { \($!_keyhash->{$key}) }
+    }
+
+    has $!_blocks_by_key; # may contain a BlockKeyStore or Block
+
 
     method add(@objects) {
         for my $object (@objects) {
-            my ($blockref, @keys);
+            my @keys;
 
             my $blocking_sub = ref $!blocking eq 'CODE' ? $!blocking
                 : ref $!blocking eq 'ARRAY' ? $!blocking->[0]
                 : die("Invalid blocking sub");
 
-            my $bwkref = \($!_block_without_key);
-            my $keyhash = $!_blocks_by_key;
+            my $r_keystore = \($!_blocks_by_key);
 
-            # Key any previous block without key
-            if ($$bwkref) {
+            if (blessed($$r_keystore) && $$r_keystore->isa('DeDup::Engine::Block')) {
+                # Key this previous block without key
+                my $block = $$r_keystore;
+
                 my $key = $blocking_sub->(
-                    $$bwkref->{objects}[0], # only one object, by definition
+                    $block->object(0), # blocks without keys can only have one object
                 );
-                push @{$$bwkref->{keys}}, $key; # no longer without key
-                $keyhash->{$key} = $$bwkref;
-                $$bwkref = undef;
+
+                $block->add_keys($key); # no longer without a key
+
+                $$r_keystore = DeDup::Engine::BlockKeyStore->new;
+                $$r_keystore->set($key => $block);
             }
 
-            # Find an existing block, if one exists
-            if (%$keyhash) {
+
+            my $r_block;
+
+            if (blessed($$r_keystore) && $$r_keystore->isa('DeDup::Engine::BlockKeyStore')) {
+                # Find an existing block, if one exists
                 my $key = $blocking_sub->($object);
                 push @keys, $key;
-                $blockref = \($keyhash->{$key}); # adds it if doesn't already exist
+                $r_block = $$r_keystore->get_ref($key); # creates a new slot if needed
+
             } else {
-                $blockref = $bwkref;
+                # Still must add the very first block
+                $r_block = $r_keystore;
             }
 
-            if (! $$blockref) {
-                $$blockref = {
+
+            if (! $$r_block) {
+                $$r_block = DeDup::Engine::Block->new(
                     keys => [@keys],
                     objects => [],
-                };
-                push @{$!_blocks}, $$blockref;
+                );
+                push @{$!_blocks}, $$r_block;
             }
 
-            push @{$$blockref->{objects}}, $object;
+            $$r_block->add_objects($object);
         }
     }
 
