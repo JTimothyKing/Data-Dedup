@@ -1,3 +1,4 @@
+package DeDup::Engine::_GUTS;
 use strict;
 use warnings;
 use mop;
@@ -45,7 +46,7 @@ class DeDup::Engine {
     sub _is_array($r) { eval { ref $r && \@{$r} } }
 
     method BUILD {
-        $!blocking = sub { $_[0] } unless defined $!blocking;
+        $!blocking = [ ] unless defined $!blocking;
         $!blocking = [ $!blocking ] if _is_code($!blocking);
         die "blocking attribute must be a coderef or an arrayref of coderefs"
             unless _is_array($!blocking) && List::MoreUtils::all { _is_code($_) } @{$!blocking};
@@ -87,42 +88,49 @@ class DeDup::Engine {
     has $!_blocks_by_key; # may contain a BlockKeyStore or Block
 
 
-    sub _block($object, $blocking_subs, $r_keystore, $keys) {
-        my ($blocking_sub, @other_blocking_subs) = @$blocking_subs;
-
+    sub _block($object, $blockingsubs, $rkeystore, $keys) {
         $keys //= [];
 
         my $keystore_isa = sub ($class) {
-            Scalar::Util::blessed($$r_keystore) && $$r_keystore->isa($class)
+            Scalar::Util::blessed($$rkeystore) && $$rkeystore->isa($class)
         };
-
-
-        if ($keystore_isa->('DeDup::Engine::Block')) {
-            # Key this previous block without key
-            my $block = $$r_keystore;
-
-            my $key = $blocking_sub->(
-                $block->object(0), # blocks without keys can only have one object
-            );
-
-            $block->add_keys($key); # no longer without a key
-
-            $$r_keystore = DeDup::Engine::BlockKeyStore->new;
-            $$r_keystore->set($key => $block);
-        }
-
 
         my $r_block; # the block slot into which to place the object
 
-        if ($keystore_isa->('DeDup::Engine::BlockKeyStore')) {
-            # Find an existing block, if one exists
-            my $key = $blocking_sub->($object);
-            push @$keys, $key;
-            $r_block = $$r_keystore->get_ref($key); # creates a new slot if needed
+        my @other_blocking_subs;
+        if (@$blockingsubs) {
+            my $blocking_sub;
+            ($blocking_sub, @other_blocking_subs) = @$blockingsubs;
+
+            if ($keystore_isa->('DeDup::Engine::Block')) {
+                # Key this previous block without key
+                my $block = $$rkeystore;
+
+                my $key = $blocking_sub->(
+                    $block->object(0), # blocks without keys can only have one object
+                );
+
+                $block->add_keys($key); # no longer without a key
+
+                $$rkeystore = DeDup::Engine::BlockKeyStore->new;
+                $$rkeystore->set($key => $block);
+            }
+
+
+            if ($keystore_isa->('DeDup::Engine::BlockKeyStore')) {
+                # Find an existing block, if one exists
+                my $key = $blocking_sub->($object);
+                push @$keys, $key;
+                $r_block = $$rkeystore->get_ref($key); # creates a new slot if needed
+
+            } else {
+                # Still must add the very first block
+                $r_block = $rkeystore;
+            }
 
         } else {
-            # Still must add the very first block
-            $r_block = $r_keystore;
+            # Just add to or create the current block.
+            $r_block = $rkeystore;
         }
 
 
@@ -149,10 +157,10 @@ class DeDup::Engine {
 
     method add(@objects) {
         for my $object (@objects) {
-            my $r_keystore = \($!_blocks_by_key);
+            my $rkeystore = \($!_blocks_by_key);
 
             push @{$!_blocks},
-                (_block($object, $!blocking, $r_keystore) // ());
+                (_block($object, $!blocking, $rkeystore) // ());
         }
     }
 

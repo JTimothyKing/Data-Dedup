@@ -21,59 +21,44 @@ use Data::Dumper;
 }
 
 
-sub dedup_000_default : Test(2) {
+# Block descriptions (in Test::Deep format) used in following tests.
+
+sub _block {
+    my ($keyspec, $objspec) = @_;
+
+    my @keys = split '', $keyspec;
+
+    my @objects = map { [ split '' ] } split ' ', $objspec;
+
+    return noclass({
+        keys => \@keys,
+        objects => bag( @objects ),
+    });
+}
+
+
+sub dedup_000_default : Test(3) {
     my $engine = DeDup::Engine->new;
     ok($engine, "instantiate default DeDup::Engine");
 
-    $engine->add();
+    $engine->add([ A => 1 ]);
 
     my $blocks = $engine->blocks;
     cmp_deeply(
         $blocks,
-        bag(),
-        "no blocks"
-    );
+        bag( _block(''=>'A1') ),
+        "one object default blocking"
+    ) or diag( Data::Dumper->Dump([$blocks], ['blocks']) );
+
+    $engine->add([ B => 2 ], [ C => 3 ]);
+
+    $blocks = $engine->blocks;
+    cmp_deeply(
+        $blocks,
+        bag( _block(''=>'A1 B2 C3') ),
+        "three objects default blocking"
+    ) or diag( Data::Dumper->Dump([$blocks], ['blocks']) );
 }
-
-
-# Block descriptions (in Test::Deep format) used in following tests.
-
-my $block_unkeyed_A1 = noclass({
-    keys => [ ],
-    objects => bag( [ A => 1 ] ),
-});
-
-my $block_A_A1 = noclass({
-    keys => [ 'A' ],
-    objects => bag( [ A => 1 ] ),
-});
-
-my $block_A_A14 = noclass({
-    keys => [ 'A' ],
-    objects => bag( [ A => 1 ], [ A => 4 ] ),
-});
-
-my $block_A0_A4 = noclass({
-    keys => [ 'A', 0 ],
-    objects => bag( [ A => 4 ] ),
-});
-
-my $block_A1_A1 = noclass({
-    keys => [ 'A', 1 ],
-    objects => bag( [ A => 1 ] ),
-});
-
-my $block_B_B2 = noclass({
-    keys => [ 'B' ],
-    objects => bag( [ B => 2 ] ),
-});
-
-my $block_C_C3 = noclass({
-    keys => [ 'C' ],
-    objects => bag( [ C => 3 ] ),
-});
-
-
 
 sub dedup_001_blocking : Test(5) {
     my $engine = DeDup::Engine->new(
@@ -86,7 +71,7 @@ sub dedup_001_blocking : Test(5) {
     my $blocks = $engine->blocks;
     cmp_deeply(
         $blocks,
-        bag( $block_unkeyed_A1 ),
+        bag( _block(''=>'A1') ),
         "one object in a block"
     ) or diag( Data::Dumper->Dump([$blocks], ['blocks']) );
 
@@ -95,7 +80,7 @@ sub dedup_001_blocking : Test(5) {
     $blocks = $engine->blocks;
     cmp_deeply(
         $blocks,
-        bag( $block_A_A1, $block_B_B2 ),
+        bag( _block(A=>'A1'), _block(B=>'B2') ),
         "two objects in two blocks"
     ) or diag( Data::Dumper->Dump([$blocks], ['blocks']) );
 
@@ -104,7 +89,7 @@ sub dedup_001_blocking : Test(5) {
     $blocks = $engine->blocks;
     cmp_deeply(
         $blocks,
-        bag( $block_A_A14, $block_B_B2 ),
+        bag( _block(A=>'A1 A4'), _block(B=>'B2') ),
         "three objects in two blocks"
     ) or diag( Data::Dumper->Dump([$blocks], ['blocks']) );
 
@@ -113,7 +98,7 @@ sub dedup_001_blocking : Test(5) {
     $blocks = $engine->blocks;
     cmp_deeply(
         $blocks,
-        bag( $block_A_A14, $block_B_B2, $block_C_C3 ),
+        bag( _block(A=>'A1 A4'), _block(B=>'B2'), _block(C=>'C3') ),
         "single-blocked blocks"
     ) or diag( Data::Dumper->Dump([$blocks], ['blocks']) );
 
@@ -133,7 +118,7 @@ sub dedup_002_multiple_blocking : Test(2) {
     my $blocks = $engine->blocks;
     cmp_deeply(
         $blocks,
-        bag( $block_A0_A4, $block_A1_A1, $block_B_B2, $block_C_C3 ),
+        bag( _block(A0=>'A4'), _block(A1=>'A1'), _block(B=>'B2'), _block(C=>'C3') ),
         "multi-blocked blocks"
     ) or diag( Data::Dumper->Dump([$blocks], ['blocks']) );
 }
