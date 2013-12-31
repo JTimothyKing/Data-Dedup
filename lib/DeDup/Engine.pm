@@ -1,4 +1,4 @@
-package DeDup::Engine::_guts;
+package Dedup::Engine::_guts;
 use strict;
 use warnings;
 use mop;
@@ -9,11 +9,11 @@ use List::MoreUtils ();
 
 =head1 NAME
 
-DeDup::Engine - A general-purpose deduplication engine
+Dedup::Engine - A general-purpose deduplication engine
 
 =head1 SYNOPSIS
 
-    my $engine = DeDup::Engine->new(
+    my $engine = Dedup::Engine->new(
         blocking => [
             sub { -s $_[0] },   # first blocking key: filesize
             sub {               # second blocking key: sha1
@@ -37,9 +37,20 @@ DeDup::Engine - A general-purpose deduplication engine
               (map "  $_\n", @$files);
     }
 
+=head1 DESCRIPTION
+
+=head1 NOTES
+
+  * Does not yet support deduplicating based on direct comparisons of multiple objects.
+
+  * Does not yet support blocking algorithms that put the same object in multiple blocks.
+
+  * Does not yet support fuzzy comparison algorithms (that depend on how closely two
+    objects match, rather than a simple yea or nay).
+
 =cut
 
-class DeDup::Engine {
+class Dedup::Engine {
     has $!blocking is ro; # a sub or array of subs
 
     sub _is_code($r) { eval { ref $r && \&{$r} } }
@@ -53,7 +64,7 @@ class DeDup::Engine {
     }
 
 
-    class DeDup::Engine::Block is repr('HASH') {
+    class Dedup::Engine::Block is repr('HASH') {
         has $!keys = [];
         has $!objects = [];
 
@@ -76,7 +87,7 @@ class DeDup::Engine {
     has $!_blocks = []; # an array of Block objects
 
 
-    class DeDup::Engine::BlockKeyStore {
+    class Dedup::Engine::BlockKeyStore {
         has $!_keyhash = {};
 
         method set($key, $content) { $!_keyhash->{$key} = $content }
@@ -98,7 +109,7 @@ class DeDup::Engine {
 
         $block->add_keys($key); # Now the block is no longer without a key.
 
-        my $keystore = DeDup::Engine::BlockKeyStore->new;
+        my $keystore = Dedup::Engine::BlockKeyStore->new;
         $keystore->set($key => $block);
         return $keystore;
     }
@@ -114,13 +125,13 @@ class DeDup::Engine {
         if (@$blockingsubs) {
             my ($blockingsub, @other_blocking_subs) = @$blockingsubs;
 
-            if ($blockslot_isa->('DeDup::Engine::Block')) {
+            if ($blockslot_isa->('Dedup::Engine::Block')) {
                 # Found a block that hasn't been keyed at this level;
                 # push it down the hierarchy into a keystore.
                 $$rblockslot = _block_to_keystore($$rblockslot, $blockingsub);
             }
 
-            if ($blockslot_isa->('DeDup::Engine::BlockKeyStore')) {
+            if ($blockslot_isa->('Dedup::Engine::BlockKeyStore')) {
                 # File the current object in the appropriate slot in the keystore.
                 my $key = $blockingsub->($object);
                 push @$keys, $key;
@@ -137,7 +148,7 @@ class DeDup::Engine {
 
         if (! $$rblockslot) {
             # This is the first object keyed to this level with this key sequence.
-            $$rblockslot = DeDup::Engine::Block->new(
+            $$rblockslot = Dedup::Engine::Block->new(
                 keys => [@$keys],
                 objects => [$object],
             );

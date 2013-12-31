@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-package t::unit::DeDup::Engine;
+package t::unit::Dedup::Engine;
 use strict;
 use warnings;
 use Test::Most;
@@ -16,7 +16,7 @@ use Data::Dumper;
 { # Load module under test, and bail out if it dies.
     my $module_loaded;
     END { BAIL_OUT "Could not load module under test" unless $module_loaded }
-    use DeDup::Engine;
+    use Dedup::Engine;
     $module_loaded = 1;
 }
 
@@ -38,8 +38,8 @@ sub _block {
 
 
 sub dedup_000_default : Test(3) {
-    my $engine = DeDup::Engine->new;
-    ok($engine, "instantiate default DeDup::Engine");
+    my $engine = Dedup::Engine->new;
+    ok($engine, "instantiate default Dedup::Engine");
 
     $engine->add([ A => 1 ]);
 
@@ -61,10 +61,10 @@ sub dedup_000_default : Test(3) {
 }
 
 sub dedup_001_blocking : Test(5) {
-    my $engine = DeDup::Engine->new(
+    my $engine = Dedup::Engine->new(
         blocking => sub { $_[0][0] },
     );
-    ok($engine, "instantiate DeDup::Engine with blocking sub");
+    ok($engine, "instantiate Dedup::Engine with blocking sub");
 
     $engine->add([ A => 1 ]);
 
@@ -105,13 +105,13 @@ sub dedup_001_blocking : Test(5) {
 }
 
 sub dedup_002_multiple_blocking : Test(2) {
-    my $engine = DeDup::Engine->new(
+    my $engine = Dedup::Engine->new(
         blocking => [
             sub { $_[0][0] },
             sub { $_[0][1] % 2 },
         ],
     );
-    ok($engine, "instantiate DeDup::Engine with multiple blocking subs");
+    ok($engine, "instantiate Dedup::Engine with multiple blocking subs");
 
     $engine->add([ A => 1 ], [ B => 2 ], [ C => 3 ], [ A => 4 ]);
 
