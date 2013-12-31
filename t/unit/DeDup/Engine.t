@@ -119,8 +119,6 @@ sub dedup_001_blocking : Test(5) {
 
 }
 
-=pod
-
 sub dedup_002_multiple_blocking : Test(2) {
     my $engine = DeDup::Engine->new(
         blocking => [
@@ -140,7 +138,6 @@ sub dedup_002_multiple_blocking : Test(2) {
     ) or diag( Data::Dumper->Dump([$blocks], ['blocks']) );
 }
 
-=cut
 
 }
 

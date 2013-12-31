@@ -87,7 +87,9 @@ class DeDup::Engine {
     has $!_blocks_by_key; # may contain a BlockKeyStore or Block
 
 
-    method _block($object, $blocking_sub, $r_keystore, $keys) {
+    sub _block($object, $blocking_subs, $r_keystore, $keys) {
+        my ($blocking_sub, @other_blocking_subs) = @$blocking_subs;
+
         $keys //= [];
 
         my $keystore_isa = sub ($class) {
@@ -124,24 +126,33 @@ class DeDup::Engine {
         }
 
 
-        if (! $$r_block) {
-            $$r_block = DeDup::Engine::Block->new(
+        my $new_block;
+
+        if ($$r_block) {
+            # Create a sub-block, if possible.
+            $new_block = _block($object, \@other_blocking_subs, $r_block, $keys)
+                if @other_blocking_subs;
+
+            $$r_block->add_objects($object) unless $new_block;
+
+        } else {
+            $new_block = DeDup::Engine::Block->new(
                 keys => [@$keys],
                 objects => [],
             );
-            push @{$!_blocks}, $$r_block;
+            $new_block->add_objects($object);
+            $$r_block =  $new_block;
         }
 
-        $$r_block->add_objects($object);
+        return $new_block;
     }
 
     method add(@objects) {
         for my $object (@objects) {
-            my $blocking_sub = $!blocking->[0];
-
             my $r_keystore = \($!_blocks_by_key);
 
-            $self->_block($object, $blocking_sub, $r_keystore);
+            push @{$!_blocks},
+                (_block($object, $!blocking, $r_keystore) // ());
         }
     }
 
