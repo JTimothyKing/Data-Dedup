@@ -1,4 +1,4 @@
-package DeDup::Engine::_GUTS;
+package DeDup::Engine::_guts;
 use strict;
 use warnings;
 use mop;
@@ -88,79 +88,69 @@ class DeDup::Engine {
     has $!_blocks_by_key; # may contain a BlockKeyStore or Block
 
 
-    sub _block($object, $blockingsubs, $rkeystore, $keys) {
+    sub _block_to_keystore($block, $blockingsub) {
+        # Only called on blocks without a key at this level,
+        # because blocks with a key would be stored in a keystore at this level.
+
+        my $key = $blockingsub->(
+            $block->object(0), # Blocks without keys can only have one object.
+        );
+
+        $block->add_keys($key); # Now the block is no longer without a key.
+
+        my $keystore = DeDup::Engine::BlockKeyStore->new;
+        $keystore->set($key => $block);
+        return $keystore;
+    }
+
+    # Returns a reference to the new block created for the object, if a new block was created.
+    sub _block($object, $blockingsubs, $rblockslot, $keys) {
         $keys //= [];
 
-        my $keystore_isa = sub ($class) {
-            Scalar::Util::blessed($$rkeystore) && $$rkeystore->isa($class)
+        my $blockslot_isa = sub ($class) {
+            Scalar::Util::blessed($$rblockslot) && $$rblockslot->isa($class)
         };
 
-        my $r_block; # the block slot into which to place the object
-
-        my @other_blocking_subs;
         if (@$blockingsubs) {
-            my $blocking_sub;
-            ($blocking_sub, @other_blocking_subs) = @$blockingsubs;
+            my ($blockingsub, @other_blocking_subs) = @$blockingsubs;
 
-            if ($keystore_isa->('DeDup::Engine::Block')) {
-                # Key this previous block without key
-                my $block = $$rkeystore;
-
-                my $key = $blocking_sub->(
-                    $block->object(0), # blocks without keys can only have one object
-                );
-
-                $block->add_keys($key); # no longer without a key
-
-                $$rkeystore = DeDup::Engine::BlockKeyStore->new;
-                $$rkeystore->set($key => $block);
+            if ($blockslot_isa->('DeDup::Engine::Block')) {
+                # Found a block that hasn't been keyed at this level;
+                # push it down the hierarchy into a keystore.
+                $$rblockslot = _block_to_keystore($$rblockslot, $blockingsub);
             }
 
-
-            if ($keystore_isa->('DeDup::Engine::BlockKeyStore')) {
-                # Find an existing block, if one exists
-                my $key = $blocking_sub->($object);
+            if ($blockslot_isa->('DeDup::Engine::BlockKeyStore')) {
+                # File the current object in the appropriate slot in the keystore.
+                my $key = $blockingsub->($object);
                 push @$keys, $key;
-                $r_block = $$rkeystore->get_ref($key); # creates a new slot if needed
-
-            } else {
-                # Still must add the very first block
-                $r_block = $rkeystore;
+                return _block( $object, \@other_blocking_subs,
+                    $$rblockslot->get_ref($key), # creates a new sub-slot if needed
+                    $keys );
             }
 
-        } else {
-            # Just add to or create the current block.
-            $r_block = $rkeystore;
+        } elsif ($$rblockslot) {
+            # No more blocking subs at this level means this is a block (not a keystore);
+            # therefore, we've found the block in which to file the object.
+            $$rblockslot->add_objects($object);
         }
 
-
-        my $new_block;
-
-        if ($$r_block) {
-            # Create a sub-block, if possible.
-            $new_block = _block($object, \@other_blocking_subs, $r_block, $keys)
-                if @other_blocking_subs;
-
-            $$r_block->add_objects($object) unless $new_block;
-
-        } else {
-            $new_block = DeDup::Engine::Block->new(
+        if (! $$rblockslot) {
+            # This is the first object keyed to this level with this key sequence.
+            $$rblockslot = DeDup::Engine::Block->new(
                 keys => [@$keys],
-                objects => [],
+                objects => [$object],
             );
-            $new_block->add_objects($object);
-            $$r_block =  $new_block;
+            return $$rblockslot;
         }
 
-        return $new_block;
+        return; # no new block was created (or else we would have returned it earlier)
     }
+
 
     method add(@objects) {
         for my $object (@objects) {
-            my $rkeystore = \($!_blocks_by_key);
-
-            push @{$!_blocks},
-                (_block($object, $!blocking, $rkeystore) // ());
+            push @{$!_blocks}, _block( $object, $!blocking, \($!_blocks_by_key) );
         }
     }
 
