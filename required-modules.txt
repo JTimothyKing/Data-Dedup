@@ -1,0 +1,7 @@
+mop
+signatures
+List::MoreUtils
+Digest::SHA
+Proc::ProcessTable
+Test::Most
+Test::Class
