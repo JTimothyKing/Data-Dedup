@@ -1,0 +1,32 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use Benchmark ':hireswallclock';
+use Dedup::Files;
+
+my $dedup = Dedup::Files->new(
+    dir => $ARGV[0],
+    verbose => 1,
+);
+
+my $mark_start = Benchmark->new;
+
+$dedup->scan();
+
+my $mark_end_scan = Benchmark->new;
+
+my $file_list = $dedup->duplicates;
+
+my $separator = '='x70 . "\n";
+print $separator;
+print
+    join $separator,
+    map {
+        join '', map "$_\n", @$_
+    } grep { @$_ > 1 } @$file_list;
+print $separator;
+
+print "Scan time: ", timestr(timediff($mark_end_scan, $mark_start)), "\n";
+
+__END__

@@ -37,7 +37,7 @@ sub _block {
 }
 
 
-sub dedup_000_default : Test(3) {
+sub dedup_engine_000_default : Test(3) {
     my $engine = Dedup::Engine->new;
     ok($engine, "instantiate default Dedup::Engine");
 
@@ -60,7 +60,7 @@ sub dedup_000_default : Test(3) {
     ) or diag( Data::Dumper->Dump([$blocks], ['blocks']) );
 }
 
-sub dedup_001_blocking : Test(5) {
+sub dedup_engine_001_blocking : Test(5) {
     my $engine = Dedup::Engine->new(
         blocking => sub { $_[0][0] },
     );
@@ -104,7 +104,7 @@ sub dedup_001_blocking : Test(5) {
 
 }
 
-sub dedup_002_multiple_blocking : Test(2) {
+sub dedup_engine_002_multiple_blocking : Test(2) {
     my $engine = Dedup::Engine->new(
         blocking => [
             sub { $_[0][0] },

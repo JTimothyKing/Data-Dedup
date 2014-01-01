@@ -16,8 +16,8 @@ Dedup::Engine - A general-purpose deduplication engine
     my $engine = Dedup::Engine->new(
         blocking => [
             sub { -s $_[0] },   # first blocking key: filesize
-            sub {               # second blocking key: sha1
-                Digest::SHA::new('sha1')
+            sub {               # second blocking key: SHA-1
+                Digest::SHA->new(1)
                     ->addfile($_[0])
                     ->hexdigest;
             },
@@ -32,7 +32,7 @@ Dedup::Engine - A general-purpose deduplication engine
     for my $block (@$blocks) {
         my ($keys, $files) = @$block{'keys', 'objects'};
         my ($filesize, $sha1) = @$keys;
-        print (@$files > 1) ? 'duplicates' : 'unique',
+        print @$files > 1 ? 'duplicates' : 'unique',
               ": filesize $filesize, sha1 $sha1\n",
               (map "  $_\n", @$files);
     }
