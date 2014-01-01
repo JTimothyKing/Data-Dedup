@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 
 package t::unit::Dedup::Engine;
+use 5.016;
 use strict;
 use warnings;
 use Test::Most;

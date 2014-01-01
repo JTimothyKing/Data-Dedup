@@ -1,8 +1,7 @@
 #!/usr/bin/env perl
 
-use 5.014; # so that srand() returns the seed
-
 package t::unit::Dedup::Files;
+use 5.016;
 use strict;
 use warnings;
 use Test::Most;

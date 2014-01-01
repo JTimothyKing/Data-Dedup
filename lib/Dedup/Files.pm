@@ -1,7 +1,7 @@
 package Dedup::Files::_guts;
+use 5.016;
 use strict;
 use warnings;
-use feature 'state';
 use mop;
 use signatures;
 
@@ -45,7 +45,7 @@ Dedup::Files - Detect duplicate files using Dedup::Engine
 
 class Dedup::Files {
     has $!dir is rw;
-    has $!verbose is rw;
+    has $!progress is rw;
 
     has $!engine;
 
@@ -75,29 +75,25 @@ class Dedup::Files {
         );
     }
 
+    has $!inodes_seen = {};
 
-    sub print_files_count($numfiles) {
-        state $files_count = 0;
-        state $next_min_files_to_print = 0;
-        $files_count += $numfiles;
-        if ($files_count >= $next_min_files_to_print) {
-            print STDERR "\rscanned $files_count files";
-            $next_min_files_to_print = (int($files_count / 100) + 1) * 100;
-        }
-    }
+    method scan(%args) {
+        my $dir = $args{dir} // $!dir;
+        my $progress = $args{progress} // $!progress;
 
-    method scan {
-        my %seen; # inode numbers that we've seen before
         File::Find::find({
             no_chdir => 1,
             wanted => sub {
                 return unless -f && !-l && -s > 0;
-                return if $seen{ File::stat::lstat($_)->ino }++;
+                return if $!inodes_seen->{ File::stat::lstat($_)->ino }++;
+
+                my $filesize = -s;  # while it's fresh in memory
+
                 $!engine->add( $_ );
-                print_files_count 1 if $!verbose;
+
+                $progress->($filesize) if $progress;
             },
-        }, $!dir);
-        print STDERR "\r" if $!verbose;
+        }, $dir);
     }
 
 

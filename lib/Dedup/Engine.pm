@@ -1,11 +1,14 @@
 package Dedup::Engine::_guts;
+use 5.016;
 use strict;
 use warnings;
 use mop;
 use signatures;
 
-use Scalar::Util ();
 use List::MoreUtils ();
+
+# core modules
+use Scalar::Util ();
 
 =head1 NAME
 
