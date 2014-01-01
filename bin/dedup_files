@@ -18,12 +18,21 @@ my $mark_end_scan = Benchmark->new;
 
 my $file_list = $dedup->duplicates;
 
-my $separator = '='x70 . "\n";
+# my $separator = '='x70 . "\n";
+# print $separator;
+# print
+#     join $separator,
+#     map {
+#         join '', map "$_\n", @$_
+#     } grep { @$_ > 1 } @$file_list;
+# print $separator;
+
+my $separator = '-'x30 . "\n";
 print $separator;
 print
-    join $separator,
+    sort { $a cmp $b }
     map {
-        join '', map "$_\n", @$_
+        (join "\t", sort { $a cmp $b } @$_) . "\n"
     } grep { @$_ > 1 } @$file_list;
 print $separator;
 
