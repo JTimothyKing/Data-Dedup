@@ -121,8 +121,10 @@ class Dedup::Engine {
     sub _block($object, $blockingsubs, $rblockslot, $keys) {
         $keys //= [];
 
+        my $blockslot = $$rblockslot;
+
         my $blockslot_isa = sub ($type) {
-            $$rblockslot && $$rblockslot->_internal_type eq $type
+            $blockslot && $blockslot->_internal_type eq $type
         };
 
         if (@$blockingsubs) {
@@ -131,7 +133,7 @@ class Dedup::Engine {
             if ($blockslot_isa->('block')) {
                 # Found a block that hasn't been keyed at this level;
                 # push it down the hierarchy into a keystore.
-                $$rblockslot = _block_to_keystore($$rblockslot, $blockingsub);
+                $blockslot = $$rblockslot = _block_to_keystore($blockslot, $blockingsub);
             }
 
             if ($blockslot_isa->('keystore')) {
@@ -139,23 +141,23 @@ class Dedup::Engine {
                 my $key = $blockingsub->($object);
                 push @$keys, $key;
                 return _block( $object, \@other_blocking_subs,
-                    $$rblockslot->get_ref($key), # creates a new sub-slot if needed
+                    $blockslot->get_ref($key), # creates a new sub-slot if needed
                     $keys );
             }
 
-        } elsif ($$rblockslot) {
+        } elsif ($blockslot) {
             # No more blocking subs at this level means this is a block (not a keystore);
             # therefore, we've found the block in which to file the object.
-            $$rblockslot->add_objects($object);
+            $blockslot->add_objects($object);
         }
 
-        if (! $$rblockslot) {
+        if (! $blockslot) {
             # This is the first object keyed to this level with this key sequence.
-            $$rblockslot = Dedup::Engine::Block->new(
+            $blockslot = $$rblockslot = Dedup::Engine::Block->new(
                 keys => [@$keys],
                 objects => [$object],
             );
-            return $$rblockslot;
+            return $blockslot;
         }
 
         return; # no new block was created (or else we would have returned it earlier)
