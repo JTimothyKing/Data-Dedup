@@ -11,7 +11,6 @@ use Digest::SHA;
 
 # core modules
 use File::Find ();
-use File::stat ();
 use List::Util 'min', 'max';
 
 =head1 NAME
@@ -57,8 +56,8 @@ class Dedup::Files {
 
                 sub {               # second blocking key: data sample from first cluster
                     my $file = shift;
-                    my $st = File::stat::lstat $file;
-                    my $cluster_size = min $st->size, ($st->blksize || 4096);
+                    my ($size,$blksize) = (lstat $file)[7,11];
+                    my $cluster_size = min $size, ($blksize || 4096);
                     my $offset = max 0, ($cluster_size/2 - 128);
                     open my $fd, '<', $file or die "cannot read from $file";
                     my $data;
@@ -88,7 +87,7 @@ class Dedup::Files {
             wanted => sub {
                 return unless -f && !-l && (!$ignore_empty || -s > 0);
 
-                return if 1 < push @{ $!inodes_seen->{ File::stat::lstat($_)->ino } }, $_;
+                return if 1 < push @{ $!inodes_seen->{ (lstat)[1] } }, $_;
 
                 my $filesize = -s;  # while it's fresh in memory
 
