@@ -81,6 +81,8 @@ class Dedup::Engine {
         sub objects($self) { $self->{objects} }
         sub add_objects($self, @objects) { push @{$self->{objects}}, @objects; $self->{objects} }
         sub object($self, $idx) { $self->{objects}->[$idx] }
+
+        sub _internal_type { 'block' };
     }
 
     has $!_blocks = []; # an array of Block objects
@@ -93,6 +95,8 @@ class Dedup::Engine {
 
         # Returns a reference to the key slot within the key store
         method get_ref($key) { \($!_keyhash->{$key}) }
+
+        method _internal_type { 'keystore' };
     }
 
     has $!_blocks_by_key; # may contain a BlockKeyStore or Block
@@ -117,22 +121,20 @@ class Dedup::Engine {
     sub _block($object, $blockingsubs, $rblockslot, $keys) {
         $keys //= [];
 
-        my $blockslot_isa = sub ($class) {
-            # Properly, we should use UNIVERSAL::isa, but that's way slow,
-            # at least in mop 0.02-TRIAL (2014-01-02); and given that this
-            (Scalar::Util::blessed($$rblockslot) // '') eq $class
+        my $blockslot_isa = sub ($type) {
+            $$rblockslot && $$rblockslot->_internal_type eq $type
         };
 
         if (@$blockingsubs) {
             my ($blockingsub, @other_blocking_subs) = @$blockingsubs;
 
-            if ($blockslot_isa->('Dedup::Engine::Block')) {
+            if ($blockslot_isa->('block')) {
                 # Found a block that hasn't been keyed at this level;
                 # push it down the hierarchy into a keystore.
                 $$rblockslot = _block_to_keystore($$rblockslot, $blockingsub);
             }
 
-            if ($blockslot_isa->('Dedup::Engine::BlockKeyStore')) {
+            if ($blockslot_isa->('keystore')) {
                 # File the current object in the appropriate slot in the keystore.
                 my $key = $blockingsub->($object);
                 push @$keys, $key;
