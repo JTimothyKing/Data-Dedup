@@ -294,7 +294,10 @@ sub dedup_unreadable_files : Test(3) {
     my $dedup = Dedup::Files->new(dir => $test_dir, ignore_empty => 1);
     ok($dedup, "instantiate Dedup::Files with ignore_empty");
 
-    lives_ok { $dedup->scan() } "scan does not die on unreadable files";
+    {
+        local $SIG{__WARN__} = sub { }; # ignore warnings
+        lives_ok { $dedup->scan() } "scan does not die on unreadable files";
+    }
 
     my $file_list = $dedup->duplicates;
     cmp_deeply(
