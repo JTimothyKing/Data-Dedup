@@ -122,7 +122,9 @@ class Dedup::Engine {
         $keys //= [];
 
         my $blockslot_isa = sub ($class) {
-            Scalar::Util::blessed($$rblockslot) && $$rblockslot->isa($class)
+            # Properly, we should use UNIVERSAL::isa, but that's way slow,
+            # at least in mop 0.02-TRIAL (2014-01-02); and given that this
+            (Scalar::Util::blessed($$rblockslot) // '') eq $class
         };
 
         if (@$blockingsubs) {
