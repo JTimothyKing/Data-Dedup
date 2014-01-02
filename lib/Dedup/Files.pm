@@ -88,7 +88,7 @@ class Dedup::Files {
             wanted => sub {
                 return unless -f && !-l && (!$ignore_empty || -s > 0);
 
-                warn("cannot read file $_"), return unless -r;
+                warn("cannot read file $_\n"), return unless -r;
 
                 return if 1 < push @{ $!inodes_seen->{ File::stat::lstat($_)->ino } }, $_;
 
