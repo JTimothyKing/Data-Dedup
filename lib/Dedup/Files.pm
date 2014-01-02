@@ -45,6 +45,7 @@ Dedup::Files - Detect duplicate files using Dedup::Engine
 
 class Dedup::Files {
     has $!dir is rw;
+    has $!ignore_empty is rw;
     has $!progress is rw;
 
     has $!engine;
@@ -80,12 +81,14 @@ class Dedup::Files {
     method scan(%args) {
         my $dir = $args{dir} // $!dir;
         my $progress = $args{progress} // $!progress;
+        my $ignore_empty = $args{ignore_empty} // $!ignore_empty;
 
         File::Find::find({
             no_chdir => 1,
             wanted => sub {
-                return unless -f && !-l && -s > 0;
-                return if $!inodes_seen->{ File::stat::lstat($_)->ino }++;
+                return unless -f && !-l && (!$ignore_empty || -s > 0);
+
+                return if 1 < push @{ $!inodes_seen->{ File::stat::lstat($_)->ino } }, $_;
 
                 my $filesize = -s;  # while it's fresh in memory
 
@@ -97,8 +100,32 @@ class Dedup::Files {
     }
 
 
-    method duplicates {
-        [ map { $_->{objects} } @{$!engine->blocks} ];
+    method duplicates(%args) {
+        my $resolve_hardlinks = $args{resolve_hardlinks};
+
+        my @file_list = map { $_->{objects} } @{$!engine->blocks};
+
+        if ($resolve_hardlinks) {
+            my %hardlinks = map {
+                my $files = $_;
+                @$files > 1 ? map { $_ => $files } @$files : ();
+            } @{ $self->hardlinks };
+
+            for my $files (@file_list) {
+                for my $file (@$files) {
+                    # !!! permanently changes the $file stored in $!engine->blocks
+                    $file = $resolve_hardlinks->($hardlinks{$file})
+                        if exists $hardlinks{$file};
+                }
+            }
+        }
+
+        return \@file_list;
+    }
+
+
+    method hardlinks {
+        [ values %{$!inodes_seen} ];
     }
 }
 

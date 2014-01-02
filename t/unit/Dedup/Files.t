@@ -26,6 +26,8 @@ use Time::HiRes ();
     $module_loaded = 1;
 }
 
+sub fail_if_returned_early { 1 }
+
 
 sub generate_test_dir : Test(setup) {
     my $self = shift;
@@ -98,7 +100,8 @@ sub dedup_files_traverse_directory_trees : Test(2) {
 
 
 sub dedup_files_ignore_symlinks : Test(2) {
-    return "OS does not support symlinks" unless eval { symlink("",""); 1 };
+SKIP: {
+    skip "OS does not support symlinks", 2 unless eval { symlink("",""); 1 };
 
     my $self = shift;
     my $test_dir = $self->{test_dir};
@@ -126,9 +129,11 @@ sub dedup_files_ignore_symlinks : Test(2) {
         [ bag(@files) ],
     ) or diag( Data::Dumper->Dump([$file_list, [\@files]], ['got', 'expected']) );
 }
+}
 
 
-sub dedup_files_ignore_hardlinks : Test(2) {
+sub dedup_files_hardlinks : Test(5) {
+SKIP: {
     my $self = shift;
     my $test_dir = $self->{test_dir};
 
@@ -141,7 +146,7 @@ sub dedup_files_ignore_hardlinks : Test(2) {
     my $file = $files[0];
     for (1..10) {
         my (undef, $link) = tempfile( DIR => $test_dir, OPEN => 0 );
-        link($file, $link) or return "cannot create hard link";
+        link($file, $link) or skip "cannot create hard link", 5;
         push @files, $link;
     }
 
@@ -154,7 +159,31 @@ sub dedup_files_ignore_hardlinks : Test(2) {
     cmp_deeply(
         $file_list,
         [ [ any(@files) ] ],
+        "only one hardlink can be considered as a duplicate"
     ) or diag( Data::Dumper->Dump([$file_list], ['got']) );
+
+    my $hardlinks = $dedup->hardlinks;
+    cmp_deeply(
+        $hardlinks,
+        [ bag(@files) ],
+        "hardlinks() returns lists of hardlinks"
+    ) or diag( Data::Dumper->Dump([$hardlinks, [\@files]], ['got', 'expected']) );
+
+    my $preferred_file_path = "The preferred filename!";
+    $file_list = $dedup->duplicates(
+        resolve_hardlinks => sub {
+            my ($files) = @_;
+            ok($files == $hardlinks->[0], "list of hardlinks passed to resolve_hardlinks sub")
+                or diag( Data::Dumper->Dump([$files, $hardlinks->[0]], ['got', 'expected']) );
+            return $preferred_file_path;
+        },
+    );
+    cmp_deeply(
+        $file_list,
+        [ [ $preferred_file_path ] ],
+        "resolve_hardlinks sub determines the path returned for a hardlink"
+    );
+}
 }
 
 
@@ -205,7 +234,7 @@ sub dedup_files_file_content : Test(2) {
 }
 
 
-sub dedup_ignore_zero_length_files : Test(2) {
+sub dedup_zero_length_files : Test(4) {
     my $self = shift;
     my $test_dir = $self->{test_dir};
 
@@ -215,10 +244,13 @@ sub dedup_ignore_zero_length_files : Test(2) {
         duplicate => 1,
     } } (1..1) );
 
+    my @empty_files;
     for (1..10) {
         my ($fd, $file) = tempfile( DIR => $test_dir );
         close $fd;
+        push @empty_files, $file;
     }
+
 
     my $dedup = Dedup::Files->new(dir => $test_dir);
     ok($dedup, "instantiate Dedup::Files");
@@ -228,7 +260,21 @@ sub dedup_ignore_zero_length_files : Test(2) {
     my $file_list = $dedup->duplicates;
     cmp_deeply(
         $file_list,
-        [ [ any(@files) ] ],
+        bag( bag(@files), bag(@empty_files) ),
+        "by default scans zero-length files"
+    ) or diag( Data::Dumper->Dump([$file_list, [\@files, \@empty_files]], ['got', 'expected']) );
+
+
+    $dedup = Dedup::Files->new(dir => $test_dir, ignore_empty => 1);
+    ok($dedup, "instantiate Dedup::Files with ignore_empty");
+
+    $dedup->scan();
+
+    $file_list = $dedup->duplicates;
+    cmp_deeply(
+        $file_list,
+        [ bag(@files) ],
+        "ignore_empty ignores zero-length files"
     ) or diag( Data::Dumper->Dump([$file_list, [\@files]], ['got', 'expected']) );
 }
 
