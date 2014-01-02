@@ -67,6 +67,10 @@ class Dedup::Engine {
     }
 
 
+    use constant _internal_type_Block => 1;
+    use constant _internal_type_BlockKeyStore => 2;
+
+
     package Dedup::Engine::Block {
         use signatures;
 
@@ -82,7 +86,7 @@ class Dedup::Engine {
         sub add_objects($self, @objects) { push @{$self->{objects}}, @objects; $self->{objects} }
         sub object($self, $idx) { $self->{objects}->[$idx] }
 
-        sub _internal_type { 'block' };
+        sub _internal_type { Dedup::Engine::_guts::_internal_type_Block }
     }
 
     has $!_blocks = []; # an array of Block objects
@@ -96,7 +100,7 @@ class Dedup::Engine {
         # Returns a reference to the key slot within the key store
         method get_ref($key) { \($!_keyhash->{$key}) }
 
-        method _internal_type { 'keystore' };
+        method _internal_type { _internal_type_BlockKeyStore }
     }
 
     has $!_blocks_by_key; # may contain a BlockKeyStore or Block
@@ -123,20 +127,20 @@ class Dedup::Engine {
 
         my $blockslot = $$rblockslot;
 
-        my $blockslot_isa = sub ($type) {
-            $blockslot && $blockslot->_internal_type eq $type
+        my $blockslot_internal_type_is = sub ($type) {
+            $blockslot && $blockslot->_internal_type == $type
         };
 
         if (@$blockingsubs) {
             my ($blockingsub, @other_blocking_subs) = @$blockingsubs;
 
-            if ($blockslot_isa->('block')) {
+            if ($blockslot_internal_type_is->(_internal_type_Block)) {
                 # Found a block that hasn't been keyed at this level;
                 # push it down the hierarchy into a keystore.
                 $blockslot = $$rblockslot = _block_to_keystore($blockslot, $blockingsub);
             }
 
-            if ($blockslot_isa->('keystore')) {
+            if ($blockslot_internal_type_is->(_internal_type_BlockKeyStore)) {
                 # File the current object in the appropriate slot in the keystore.
                 my $key = $blockingsub->($object);
                 push @$keys, $key;
