@@ -69,9 +69,12 @@ class Dedup::Engine {
 
     package Dedup::Engine::Block {
         use signatures;
+        use fields qw(keys objects);
 
         sub new($class, %args) {
-            return bless \%args, $class;
+            my $self = fields::new($class);
+            $self->{$_} = $args{$_} for qw(keys objects);
+            return $self;
         }
 
         sub keys($self) { $self->{keys} }
