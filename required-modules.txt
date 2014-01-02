@@ -2,6 +2,3 @@ STEVAN/mop-0.02-TRIAL.tar.gz
 signatures
 List::MoreUtils
 Digest::SHA
-Proc::ProcessTable
-Test::Most
-Test::Class

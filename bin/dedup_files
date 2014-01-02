@@ -5,38 +5,16 @@ use warnings;
 
 use Benchmark ':hireswallclock';
 use Dedup::Files;
-use Proc::ProcessTable;
 
 my $dir = $ARGV[0];
 my $verbose = 1;
 
-
-my @memory_usage;
-
-sub record_memory_usage {
-    my ($name, $data) = @_;
-    state $process_table_reader = new Proc::ProcessTable( enable_ttys => 0 );
-    my $process_table = $process_table_reader->table;
-    my ($process_data) = grep { $_->pid == $$ } @$process_table;
-
-    warn("cannot find process entry for my PID: $$\n"), return
-        unless $process_data;
-
-    my $memory_record = {
-        name => $name,
-        data => $data,
-        rss => $process_data->rss,
-    };
-    push @memory_usage, $memory_record;
-    return $memory_record;
-}
 
 my $dedup = Dedup::Files->new(
     dir => $dir,
 );
 
 my $mark_start = Benchmark->new;
-record_memory_usage('start');
 
 
 {
@@ -80,12 +58,8 @@ sub print_progress {
     $bytes_count += $filesize;
 
     if ($files_count >= $next_min_files_to_print || $args{force}) {
-        my $memory_record = record_memory_usage("after $files_count files",
-            { files => $files_count });
-
         my $human_readable_bytes = human_readable_bytes($bytes_count);
-        my $human_readable_RAM = human_readable_bytes($memory_record->{rss} * 1024);
-        print STDERR "\rscanned $files_count files, $human_readable_bytes ($human_readable_RAM RAM)",
+        print STDERR "\rscanned $files_count files, $human_readable_bytes",
             (' ' x 12), ("\b" x 12);
         $next_min_files_to_print = (int($files_count / $granularity) + 1) * $granularity;
     }
@@ -125,19 +99,6 @@ print
 print $separator;
 
 
-record_memory_usage('final');
-
 print "Scan time: ", timestr(timediff($mark_end_scan, $mark_start)), "\n";
-
-print "\nMemory usage:\n";
-for my $memory_record (@memory_usage) {
-    my ($name, $data, $rss) = @$memory_record{qw(name data rss)};
-    my $bytes_used = $rss * 1024;
-    my $bytes_used_per_file = $data ? $bytes_used/$data->{files} : 0;
-    print human_readable_bytes($bytes_used),
-        ' ', $name,
-        ( ' (', human_readable_bytes($bytes_used_per_file), '/file)' )x!! $bytes_used_per_file,
-        "\n";
-}
 
 __END__
