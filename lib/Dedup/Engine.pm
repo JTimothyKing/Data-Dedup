@@ -67,24 +67,20 @@ class Dedup::Engine {
     }
 
 
-    class Dedup::Engine::Block is repr('HASH') {
-        has $!keys = [];
-        has $!objects = [];
+    package Dedup::Engine::Block {
+        use signatures;
 
-        method _sync_repr {
-            $self->{keys} = $!keys;
-            $self->{objects} = $!objects;
+        sub new($class, %args) {
+            return bless \%args, $class;
         }
 
-        method BUILD { $self->_sync_repr }
+        sub keys($self) { $self->{keys} }
+        sub add_keys($self, @keys) {push @{$self->{keys}}, @keys; return $self->{keys}; }
+        sub key($self, $idx) { $self->{keys}->[$idx] }
 
-        method keys { $!keys }
-        method add_keys(@keys) { push @{$!keys}, @keys; $self->_sync_repr; $!keys }
-        method key($idx) { $!keys->[$idx] }
-
-        method objects { $!objects }
-        method add_objects(@objects) { push @{$!objects}, @objects; $self->_sync_repr; $!objects }
-        method object($idx) { $!objects->[$idx] }
+        sub objects($self) { $self->{objects} }
+        sub add_objects($self, @objects) { push @{$self->{objects}}, @objects; $self->{objects} }
+        sub object($self, $idx) { $self->{objects}->[$idx] }
     }
 
     has $!_blocks = []; # an array of Block objects
