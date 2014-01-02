@@ -87,6 +87,8 @@ class Dedup::Files {
             wanted => sub {
                 return unless -f && !-l && (!$ignore_empty || -s > 0);
 
+                warn("cannot read file $_\n"), return unless -r;
+
                 return if 1 < push @{ $!inodes_seen->{ (lstat)[1] } }, $_;
 
                 my $filesize = -s;  # while it's fresh in memory
