@@ -86,7 +86,7 @@ class Dedup::Files {
         File::Find::find({
             no_chdir => 1,
             wanted => sub {
-                return unless -f && !-l && (!$ignore_empty || -s > 0);
+                return unless -f && -r && !-l && (!$ignore_empty || -s > 0);
 
                 return if 1 < push @{ $!inodes_seen->{ File::stat::lstat($_)->ino } }, $_;
 

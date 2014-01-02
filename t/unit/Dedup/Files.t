@@ -279,6 +279,32 @@ sub dedup_zero_length_files : Test(4) {
 }
 
 
+sub dedup_unreadable_files : Test(3) {
+    my $self = shift;
+    my $test_dir = $self->{test_dir};
+
+    my @files = _create_files( map { {
+        dir => $test_dir,
+        length => 42,
+        duplicate => 1,
+    } } (1..1) );
+
+    chmod 0, @files;
+
+    my $dedup = Dedup::Files->new(dir => $test_dir, ignore_empty => 1);
+    ok($dedup, "instantiate Dedup::Files with ignore_empty");
+
+    lives_ok { $dedup->scan() } "scan does not die on unreadable files";
+
+    my $file_list = $dedup->duplicates;
+    cmp_deeply(
+        $file_list,
+        [ ],
+        "ignore unreadable files"
+    ) or diag( Data::Dumper->Dump([$file_list], ['got']) );
+}
+
+
 }
 
 1;
