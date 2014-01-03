@@ -104,7 +104,7 @@ class Dedup::Files {
     method duplicates(%args) {
         my $resolve_hardlinks = $args{resolve_hardlinks};
 
-        my @file_list = map { $_->{objects} } @{$!engine->blocks};
+        my @file_list = map { $_->objects } @{$!engine->blocks};
 
         if ($resolve_hardlinks) {
             my %hardlinks = map {

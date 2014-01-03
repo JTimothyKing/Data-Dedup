@@ -33,7 +33,8 @@ Dedup::Engine - A general-purpose deduplication engine
 
     my $blocks = $engine->blocks;
     for my $block (@$blocks) {
-        my ($keys, $files) = @$block{'keys', 'objects'};
+        my $keys = $block->keys;
+        my $files = $block->objects;
         my ($filesize, $sha1) = @$keys;
         print @$files > 1 ? 'duplicates' : 'unique',
               ": filesize $filesize, sha1 $sha1\n",
@@ -67,23 +68,17 @@ class Dedup::Engine {
     }
 
 
-    package Dedup::Engine::Block {
-        use signatures;
-        use fields qw(keys objects);
+    class Dedup::Engine::Block {
+        has $!keys = [];
+        has $!objects = [];
 
-        sub new($class, %args) {
-            my $self = fields::new($class);
-            $self->{$_} = $args{$_} for qw(keys objects);
-            return $self;
-        }
+        method keys { $!keys }
+        method add_keys(@keys) { push @{$!keys}, @keys; $!keys }
+        method key($idx) { $!keys->[$idx] }
 
-        sub keys($self) { $self->{keys} }
-        sub add_keys($self, @keys) {push @{$self->{keys}}, @keys; return $self->{keys}; }
-        sub key($self, $idx) { $self->{keys}->[$idx] }
-
-        sub objects($self) { $self->{objects} }
-        sub add_objects($self, @objects) { push @{$self->{objects}}, @objects; $self->{objects} }
-        sub object($self, $idx) { $self->{objects}->[$idx] }
+        method objects { $!objects }
+        method add_objects(@objects) { push @{$!objects}, @objects; $!objects }
+        method object($idx) { $!objects->[$idx] }
     }
 
     has $!_blocks = []; # an array of Block objects

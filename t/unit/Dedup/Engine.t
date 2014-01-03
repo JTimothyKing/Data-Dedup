@@ -31,10 +31,10 @@ sub _block {
 
     my @objects = map { [ split '' ] } split ' ', $objspec;
 
-    return noclass({
+    return methods(
         keys => \@keys,
         objects => bag( @objects ),
-    });
+    );
 }
 
 
