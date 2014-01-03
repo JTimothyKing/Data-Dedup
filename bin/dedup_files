@@ -7,9 +7,7 @@ use Benchmark ':hireswallclock';
 use Dedup::Files;
 
 my $proc_processtable_available;
-BEGIN {
-    $proc_processtable_available = eval 'use Proc::ProcessTable; 1';
-}
+BEGIN { $proc_processtable_available = eval 'use Proc::ProcessTable (); 1'; }
 my $rss_scale = $^O =~ m/^darwin|sunos$/ ? 1024 : 1;
 
 
@@ -70,9 +68,12 @@ record_memory_usage('start');
                 return sprintf('%.1f', $bytes/$scale) . ' ' . $prefix_map{$scale} . 'B';
             }
         }
-        return $bytes . ' B';
+        return sprintf('%.0f', $bytes) . ' B';
     }
 }
+
+my $files_count = 0;
+my $file_bytes_count = 0;
 
 sub print_progress {
     state $granularity = 1000; # files
@@ -80,16 +81,14 @@ sub print_progress {
     my $filesize = (@_ % 2) && shift // 0;
     my (%args) = @_;
 
-    state $files_count = 0;
-    state $bytes_count = 0;
     state $next_min_files_to_print = 0;
 
     $files_count++;
-    $bytes_count += $filesize;
+    $file_bytes_count += $filesize;
 
     if ($files_count >= $next_min_files_to_print || $args{force}) {
-        my $human_readable_bytes = human_readable_bytes($bytes_count);
-        print STDERR "\rscanned $files_count files, $human_readable_bytes";
+        my $human_readable_bytes = human_readable_bytes($file_bytes_count);
+        print STDERR "\rscanned $files_count files, $human_readable_bytes" if $verbose;
 
         if ($proc_processtable_available) {
             my $memory_record = record_memory_usage("after $files_count files",
@@ -97,17 +96,15 @@ sub print_progress {
             my $RAM_bytes = $memory_record->{rss};
             my $human_readable_RAM = human_readable_bytes($RAM_bytes);
             my $human_readable_RAM_per_file = human_readable_bytes($RAM_bytes/$files_count);
-            print STDERR " ($human_readable_RAM RAM, $human_readable_RAM_per_file/file)";
+            print STDERR " ($human_readable_RAM RAM, $human_readable_RAM_per_file/file)" if $verbose;
         }
 
-        print STDERR (' ' x 12), ("\b" x 12);
+        print STDERR (' ' x 12), ("\b" x 12) if $verbose;
         $next_min_files_to_print = (int($files_count / $granularity) + 1) * $granularity;
     }
 }
 
-$dedup->scan(
-    ( progress => \&print_progress )x!! $verbose,
-);
+$dedup->scan( progress => \&print_progress );
 if ($verbose) {
     print_progress(force => 1);
     print STDERR "\n";
@@ -119,6 +116,8 @@ my $mark_end_scan = Benchmark->new;
 my $file_list = $dedup->duplicates(
     resolve_hardlinks => sub { ( sort { $a cmp $b } @{$_[0]} )[0] },
 );
+
+my $mark_end_duplicates = Benchmark->new;
 
 # my $separator = '='x70 . "\n";
 # print $separator;
@@ -138,21 +137,144 @@ print
     } grep { @$_ > 1 } @$file_list;
 print $separator;
 
+my $mark_end_print = Benchmark->new;
+
 
 record_memory_usage('final');
 
+print "\n";
 print "Scan time: ", timestr(timediff($mark_end_scan, $mark_start)), "\n";
+print "Resolve duplicates: ", timestr(timediff($mark_end_duplicates, $mark_end_scan)), "\n";
+print "Print results: ", timestr(timediff($mark_end_print, $mark_end_duplicates)), "\n";
+print "Total: ", timestr(timediff($mark_end_print, $mark_start)), "\n";
+
+
+print "\n";
+print "Scanned $files_count files, comprising ", human_readable_bytes($file_bytes_count), "\n";
+{
+    my $hardlinks = $dedup->hardlinks;
+    my $hardlinks_ignored_count = 0;
+    $hardlinks_ignored_count += @$_ - 1 for @$hardlinks;
+    print "Ignored $hardlinks_ignored_count hardlinks (not included in above count)\n";
+}
+{
+    my $unique_files_count = 0;
+    my $unique_duplicates_count = 0;
+    my $duplicates_count = 0;
+    for my $files (@$file_list) {
+        if (@$files == 1) {
+            $unique_files_count++;
+        } elsif (@$files > 1) {
+            $unique_duplicates_count++;
+            $duplicates_count += @$files - 1;
+        }
+    }
+    my $total_files_count = $unique_files_count+$unique_duplicates_count+$duplicates_count;
+    my $missing_files_count = $files_count - $total_files_count;
+    print "Found $unique_files_count files that were completely unique,\n",
+          "  plus $unique_duplicates_count more that had unique content,\n",
+          "  plus $duplicates_count more that were copies of those,\n",
+          "    totaling $total_files_count files processed,\n",
+          "    leaving $missing_files_count files unaccounted for.\n";
+}
+
 
 if ($proc_processtable_available) {
-    print "\nMemory usage:\n";
+    print "\n";
+    print "Memory usage:\n";
     for my $memory_record (@memory_usage) {
         my ($name, $data, $rss) = @$memory_record{qw(name data rss)};
         my $bytes_used = $rss;
         my $bytes_used_per_file = $data ? $bytes_used/$data->{files} : 0;
-        print human_readable_bytes($bytes_used),
+        print '  ', human_readable_bytes($bytes_used),
             ' ', $name,
             ( ' (', human_readable_bytes($bytes_used_per_file), '/file)' )x!! $bytes_used_per_file,
             "\n";
+    }
+}
+
+{   # Compute object memory usage by class
+    my $DEBUG = 0;
+    my $devel_size_available;
+    BEGIN { $devel_size_available = eval 'use Devel::Size (); 1'; }
+    use Scalar::Util ();
+    if ($devel_size_available) {
+        my %usage;
+        my %num_obj;
+        my %seen;
+        sub add_usage {
+            my ($class, $obj) = @_;
+            return unless defined $obj;
+            return if $seen{"$obj"}++;
+            print STDERR "  $obj\n" if $DEBUG;
+
+            if (mop::is_mop_object($obj)) {
+                print STDERR "    mop object\n" if $DEBUG;
+
+                my $meta = mop::meta($obj);
+                $class = $meta->name;
+                print STDERR "    class changed to $class\n" if $DEBUG;
+
+                $num_obj{$class}++;
+
+                my $attributes = mop::meta($obj)->attribute_map;
+                for my $attr (values %$attributes) {
+                    print STDERR "add_usage $class for ", $attr->name, "\n" if $DEBUG;
+                    my $slot = $attr->get_slot_for($obj);
+                    my $slot_size = Devel::Size::size($slot);
+                    print STDERR "    slot_size = $slot_size\n" if $DEBUG;
+                    $usage{$class} += $slot_size;
+                    add_usage( $class, $$slot );
+                }
+
+            } elsif (ref($obj)) {
+                if (Scalar::Util::blessed($obj)) {
+                    $class = Scalar::Util::blessed($obj);
+                    print STDERR "    class changed to $class\n" if $DEBUG;
+                    $num_obj{$class}++;
+                }
+
+                my $size = Devel::Size::size($obj);
+                print STDERR "    size = $size\n" if $DEBUG;
+                $usage{$class} += $size;
+
+                if (ref($obj) =~ /ARRAY/) {
+                    for my $elem (@$obj) {
+                        print STDERR "add_usage $class for element of $obj\n" if $DEBUG;
+                        add_usage($class, $elem);
+                    }
+                } elsif (ref($obj) =~ /HASH/) {
+                    while (my ($key, $value) = each %$obj) {
+                        print STDERR "add_usage $class for hash key of $obj\n" if $DEBUG;
+                        add_usage($class, $key);
+                        print STDERR "add_usage $class for hash value of $obj\n" if $DEBUG;
+                        add_usage($class, $value);
+                    }
+                } elsif (ref($obj) =~ /SCALAR/) {
+                    print STDERR "add_usage $class for $obj\n" if $DEBUG;
+                    add_usage($class, $$obj);
+                }
+            } else {
+                my $size = Devel::Size::total_size($obj);
+                print STDERR "    size = $size\n" if $DEBUG;
+                $usage{$class} += $size;
+            }
+        }
+        print STDERR "\n\nadd_usage main for \$dedup\n" if $DEBUG;
+        add_usage( main => $dedup );
+
+        print "\n";
+        print "Object RAM usage:\n";
+        my $total_size = 0;
+        for my $class (sort keys %usage) {
+            my $size = $usage{$class} // 0;
+            my $num_objs = $num_obj{$class} // 0;
+            $total_size += $size;
+            print "  $class ($num_objs objects)  - ", human_readable_bytes($size),
+                  " (", human_readable_bytes($size/$files_count), "/file)\n";
+        }
+        print "  Total - ", human_readable_bytes($total_size),
+              " (", human_readable_bytes($total_size/$files_count), "/file)\n";
     }
 }
 

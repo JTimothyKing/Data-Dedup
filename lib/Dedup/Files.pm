@@ -61,7 +61,8 @@ class Dedup::Files {
                     my $offset = max 0, ($cluster_size/2 - 128);
                     open my $fd, '<', $file or die "cannot read from $file";
                     my $data;
-                    read $fd, $data, 128, $offset;
+                    seek $fd, $offset, 0;
+                    read $fd, $data, 128;
                     close $fd;
                     return $data;
                 },
