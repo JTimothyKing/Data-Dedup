@@ -6,15 +6,45 @@ use warnings;
 use Benchmark ':hireswallclock';
 use Dedup::Files;
 
+my $proc_processtable_available;
+BEGIN {
+    $proc_processtable_available = eval 'use Proc::ProcessTable; 1';
+}
+my $rss_scale = $^O =~ m/^darwin|sunos$/ ? 1024 : 1;
+
+
 my $dir = $ARGV[0];
 my $verbose = 1;
 
+
+my @memory_usage;
+
+sub record_memory_usage {
+    return unless $proc_processtable_available;
+
+    my ($name, $data) = @_;
+    state $process_table_reader = new Proc::ProcessTable( enable_ttys => 0 );
+    my $process_table = $process_table_reader->table;
+    my ($process_data) = grep { $_->pid == $$ } @$process_table;
+
+    warn("cannot find process entry for my PID: $$\n"), return
+        unless $process_data;
+
+    my $memory_record = {
+        name => $name,
+        data => $data,
+        rss => $process_data->rss * $rss_scale,
+    };
+    push @memory_usage, $memory_record;
+    return $memory_record;
+}
 
 my $dedup = Dedup::Files->new(
     dir => $dir,
 );
 
 my $mark_start = Benchmark->new;
+record_memory_usage('start');
 
 
 {
@@ -59,8 +89,18 @@ sub print_progress {
 
     if ($files_count >= $next_min_files_to_print || $args{force}) {
         my $human_readable_bytes = human_readable_bytes($bytes_count);
-        print STDERR "\rscanned $files_count files, $human_readable_bytes",
-            (' ' x 12), ("\b" x 12);
+        print STDERR "\rscanned $files_count files, $human_readable_bytes";
+
+        if ($proc_processtable_available) {
+            my $memory_record = record_memory_usage("after $files_count files",
+                { files => $files_count });
+            my $RAM_bytes = $memory_record->{rss};
+            my $human_readable_RAM = human_readable_bytes($RAM_bytes);
+            my $human_readable_RAM_per_file = human_readable_bytes($RAM_bytes/$files_count);
+            print STDERR " ($human_readable_RAM RAM, $human_readable_RAM_per_file/file)";
+        }
+
+        print STDERR (' ' x 12), ("\b" x 12);
         $next_min_files_to_print = (int($files_count / $granularity) + 1) * $granularity;
     }
 }
@@ -99,6 +139,21 @@ print
 print $separator;
 
 
+record_memory_usage('final');
+
 print "Scan time: ", timestr(timediff($mark_end_scan, $mark_start)), "\n";
+
+if ($proc_processtable_available) {
+    print "\nMemory usage:\n";
+    for my $memory_record (@memory_usage) {
+        my ($name, $data, $rss) = @$memory_record{qw(name data rss)};
+        my $bytes_used = $rss;
+        my $bytes_used_per_file = $data ? $bytes_used/$data->{files} : 0;
+        print human_readable_bytes($bytes_used),
+            ' ', $name,
+            ( ' (', human_readable_bytes($bytes_used_per_file), '/file)' )x!! $bytes_used_per_file,
+            "\n";
+    }
+}
 
 __END__
