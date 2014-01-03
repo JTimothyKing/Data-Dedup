@@ -33,7 +33,8 @@ Dedup::Engine - A general-purpose deduplication engine
 
     my $blocks = $engine->blocks;
     for my $block (@$blocks) {
-        my ($keys, $files) = @$block{'keys', 'objects'};
+        my $keys = $block->keys;
+        my $files = $block->objects;
         my ($filesize, $sha1) = @$keys;
         print @$files > 1 ? 'duplicates' : 'unique',
               ": filesize $filesize, sha1 $sha1\n",
@@ -67,23 +68,16 @@ class Dedup::Engine {
     }
 
 
-    class Dedup::Engine::Block is repr('HASH') {
+    class Dedup::Engine::Block {
         has $!keys = [];
         has $!objects = [];
 
-        method _sync_repr {
-            $self->{keys} = $!keys;
-            $self->{objects} = $!objects;
-        }
-
-        method BUILD { $self->_sync_repr }
-
         method keys { $!keys }
-        method add_keys(@keys) { push @{$!keys}, @keys; $self->_sync_repr; $!keys }
+        method add_keys(@keys) { push @{$!keys}, @keys; $!keys }
         method key($idx) { $!keys->[$idx] }
 
         method objects { $!objects }
-        method add_objects(@objects) { push @{$!objects}, @objects; $self->_sync_repr; $!objects }
+        method add_objects(@objects) { push @{$!objects}, @objects; $!objects }
         method object($idx) { $!objects->[$idx] }
     }
 
