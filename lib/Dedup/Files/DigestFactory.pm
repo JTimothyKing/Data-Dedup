@@ -1,9 +1,12 @@
-package Dedup::Files::DigestFactory::_guts;
+package Dedup::Files::DigestFactory::_guts; ## no critic (RequireFilenameMatchesPackage)
 use 5.016;
 use strict;
 use warnings;
 use mop;
 use signatures;
+
+## no critic (ProhibitSubroutinePrototypes)
+#   ...because of mop and signatures
 
 use Dedup::Engine::BlockingFactory;
 use Digest::SHA;

@@ -1,9 +1,12 @@
-package Dedup::Engine::_guts;
+package Dedup::Engine::_guts; ## no critic (RequireFilenameMatchesPackage)
 use 5.016;
 use strict;
 use warnings;
 use mop;
 use signatures;
+
+## no critic (ProhibitSubroutinePrototypes)
+#   ...because of mop and signatures
 
 use List::MoreUtils ();
 
