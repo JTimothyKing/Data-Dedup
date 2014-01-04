@@ -10,9 +10,8 @@ __PACKAGE__->runtests;
 
 BEGIN {
 
-
+# core modules
 use Data::Dumper;
-
 use File::Path 'make_path', 'remove_tree';
 use File::Spec ();
 use File::Temp 'tempdir', 'tempfile';
@@ -26,18 +25,8 @@ use Time::HiRes ();
     $module_loaded = 1;
 }
 
+# signal to Test::Class not to implicitly skip tests
 sub fail_if_returned_early { 1 }
-
-
-sub generate_test_dir : Test(setup) {
-    my $self = shift;
-    $self->{test_dir} = tempdir();
-}
-
-sub cleanup_test_dir : Test(teardown) {
-    my $self = shift;
-    remove_tree( $self->{test_dir} );
-}
 
 
 sub _random_string {
@@ -63,6 +52,17 @@ sub _create_files {
         push @files, $file;
     }
     return @files;
+}
+
+
+sub generate_test_dir : Test(setup) {
+    my $self = shift;
+    $self->{test_dir} = tempdir();
+}
+
+sub cleanup_test_dir : Test(teardown) {
+    my $self = shift;
+    remove_tree( $self->{test_dir} );
 }
 
 
@@ -279,7 +279,7 @@ sub dedup_zero_length_files : Test(4) {
 }
 
 
-sub dedup_unreadable_files : Test(3) {
+sub dedup_unreadable_files : Test(4) {
     my $self = shift;
     my $test_dir = $self->{test_dir};
 
@@ -287,23 +287,24 @@ sub dedup_unreadable_files : Test(3) {
         dir => $test_dir,
         length => 42,
         duplicate => 1,
-    } } (1..1) );
+    } } (1..3) );
 
-    chmod 0, @files;
+    my $unreadable_file = shift @files;
+    chmod 0, $unreadable_file;
 
     my $dedup = Dedup::Files->new(dir => $test_dir, ignore_empty => 1);
     ok($dedup, "instantiate Dedup::Files with ignore_empty");
 
-    {
-        local $SIG{__WARN__} = sub { }; # ignore warnings
+    warning_like {
         lives_ok { $dedup->scan() } "scan does not die on unreadable files";
-    }
+    } qr/cannot read file \Q$unreadable_file\E/,
+        "scan emits appropriate warning on unreadable files";
 
     my $file_list = $dedup->duplicates;
     cmp_deeply(
         $file_list,
-        [ ],
-        "ignore unreadable files"
+        [ bag( @files ) ],
+        "ignore unreadable files, but deduplicate otherwise"
     ) or diag( Data::Dumper->Dump([$file_list], ['got']) );
 }
 
