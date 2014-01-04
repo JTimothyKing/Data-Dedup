@@ -169,12 +169,13 @@ SKIP: {
         "hardlinks() returns lists of hardlinks"
     ) or diag( Data::Dumper->Dump([$hardlinks, [\@files]], ['got', 'expected']) );
 
+    my $hardlinks_list = $hardlinks->[0];
     my $preferred_file_path = "The preferred filename!";
     $file_list = $dedup->duplicates(
         resolve_hardlinks => sub {
             my ($files) = @_;
-            ok($files == $hardlinks->[0], "list of hardlinks passed to resolve_hardlinks sub")
-                or diag( Data::Dumper->Dump([$files, $hardlinks->[0]], ['got', 'expected']) );
+            ok($files == $hardlinks_list, "list of hardlinks passed to resolve_hardlinks sub")
+                or diag( Data::Dumper->Dump(["$files", "$hardlinks_list"], ['got', 'expected']) );
             return $preferred_file_path;
         },
     );
