@@ -6,13 +6,11 @@ use mop;
 use signatures;
 
 use Dedup::Engine;
-
-use Digest::SHA;
+use Dedup::Files::DigestFactory;
 
 # core modules
 use File::Find ();
-use File::stat ();
-use List::Util 'min', 'max';
+use Scalar::Util 'blessed';
 
 =head1 NAME
 
@@ -35,15 +33,14 @@ Dedup::Files - Detect duplicate files using Dedup::Engine
 
 =head1 DESCRIPTION
 
-=head1 POSSIBLE FUTURE FEATURES
 
-  * Select different digest algorithms to use during scan.
-
-  * Multiple directories, and specify explicit list of files.
 
 =cut
 
+
 class Dedup::Files {
+    has $!blocking is ro;
+
     has $!dir is rw;
     has $!ignore_empty is rw;
     has $!progress is rw;
@@ -51,29 +48,8 @@ class Dedup::Files {
     has $!engine;
 
     method BUILD {
-        $!engine = Dedup::Engine->new(
-            blocking => [
-                sub { -s $_[0] },   # first blocking key: filesize
-
-                sub {               # second blocking key: data sample from first cluster
-                    my $file = shift;
-                    my $st = File::stat::lstat $file;
-                    my $cluster_size = min $st->size, ($st->blksize || 4096);
-                    my $offset = max 0, ($cluster_size/2 - 128);
-                    open my $fd, '<', $file or die "cannot read from $file";
-                    my $data;
-                    read $fd, $data, 128, $offset;
-                    close $fd;
-                    return $data;
-                },
-
-                sub {               # third blocking key: SHA-1
-                    Digest::SHA->new(1)
-                        ->addfile($_[0])
-                        ->digest;
-                },
-            ],
-        );
+        $!blocking //= Dedup::Files::DigestFactory->new;
+        $!engine = Dedup::Engine->new( blocking => $!blocking );
     }
 
     has $!inodes_seen = {};
@@ -90,7 +66,7 @@ class Dedup::Files {
 
                 warn("cannot read file $_\n"), return unless -r;
 
-                return if 1 < push @{ $!inodes_seen->{ File::stat::lstat($_)->ino } }, $_;
+                return if 1 < push @{ $!inodes_seen->{ (lstat)[1] } }, $_;
 
                 my $filesize = -s;  # while it's fresh in memory
 
@@ -130,5 +106,38 @@ class Dedup::Files {
         [ values %{$!inodes_seen} ];
     }
 }
+
+
+=head1 FEATURES THAT WOULD BE NICE TO ADD
+
+=over
+
+=item *
+
+Select different digest algorithms to use during scan.
+
+=item *
+
+Multiple directories, and specify explicit list of files.
+
+=item *
+
+An option to report hardlinks as dups (maybe via resolve_hardlinks).
+
+=back
+
+
+=head1 AUTHOR
+
+J. Timothy King (www.JTimothyKing.com, github:JTimothyKing)
+
+=head1 LICENSE
+
+This software is copyright 2014 J. Timothy King.
+
+This is free software. You may modify it and/or redistribute it under the terms of
+The MIT License. (See the LICENSE file for details.)
+
+=cut
 
 1;

@@ -1,0 +1,138 @@
+=head1 NAME
+
+Dedup::Theory - Deduplication theory.
+
+=head1 DESCRIPTION
+
+What follows is a discussion of deduplication theory, as it applies to L<Dedup::Engine>.
+
+=head2 General Deduplication Algorithm
+
+Given a set of data objects (e.g., files, database records, search results, RSS
+feed entries), we can deduplicate them by first assuming that they are all
+duplicates of each other. Obviously, they are (probably) not all duplicates of
+each other. So we need to distinguish between non-duplicate objects.
+
+We could do so by comparing all relevant object data, where "relevant" includes
+all the data that might indicate the object is unique, considering the
+application. So for a set of files, the relevant data would include all file
+data. For a set of customer records, on the other hand, the relevant data might
+include only the full name and address. We could compare all the relevant object
+data against all other objects in the set, but this is extremely inefficient.
+This might be implemented something like:
+
+    my @unique_objects;
+    OBJECT: foreach my $object (@objects) {
+        foreach my $unique_object (@unique_objects) {
+            if ($object->is_equal($unique_object)) {
+                record_duplicate($unique_object, $object);
+                next OBJECT;
+            }
+        }
+        record_unique($object);
+        push @unique_objects, $object;
+    }
+
+This algorithm runs in I<O(n2)>, degenerating to its longest number of loops if
+the set of objects are all unique. (But note that if all objects are unique in
+the first few bytes, the compare operations themselves could be very fast.) If
+all the objects are duplicates of each other, it runs in I<O(n)>, but only by
+comparing each and every relevant data byte in the first object to each and
+every corresponding data byte in every other object.
+
+Therefore, most deduplication implementations use a I<digest> of the object,
+which can be any proxy for the relevant object data. For deduplicating files,
+the fastest such digest would be the filesize, as it's part of the file
+metadata. However, it's fairly likely that two unique files would have the same
+filesize. On the other end of the spectrum, you could run the entire file data
+through a cryptographically secure hash algorithm like SHA-512. It is extremely
+unlikely that the SHA-512 digests of two unique files would collide, but this is
+also orders of magnitude slower than just checking the filesize. In between lie
+faster, smaller hashes (e.g., DJB and MD4) and hashes of only part of the file
+(e.g., only the first N bytes).
+
+The trick is to use the fastest digest algorithms first, even though they may
+produce collisions, and thus leave false duplicates. Then progress to slower,
+but more accurate, digest algorithms. No non-duplicate can ever be falsely
+detected, no matter how cheap the digest algorithm used. So the idea is to
+detect obvious non-duplicates as cheaply as possible, up front, falling back to
+more expensive algorithms only when needed. Even though computing multiple
+digests on the same object is more expensive than computing only one, the time
+saved in eliminating possible duplicates with fast algorithms should more than
+make up for the extra time spent in computing those additional digests. While
+this is obvious when it comes to relying on the filesize (which shouldn't even
+require a separate disk I/O), I believe it should also work for other digest
+sequences, if those digests are carefully chosen for the objects and type of
+data.
+
+So the general deduplication algorithm might be described as follows:
+
+=over
+
+=item 1.
+
+For each object in the set:
+
+=over
+
+=item a.
+
+Initialize a I<combined digest> for this object, which starts out empty.
+
+=item b.
+
+For each digest, from cheapest to most accurate:
+
+=over
+
+=item i.
+
+Compute the digest and append it to the combined digest.
+
+=item ii.
+
+If another object's combined digest partially matches (i.e., to a cheaper digest
+level), then compute a new combined digest for that object to the current level.
+(This should require at most one new digest computation.)
+
+=item iii.
+
+If no other object's combined digest matches, record the object as unique, and
+loop on the next object.
+
+=back
+
+=item 3.
+
+If execution makes it through the above loop, the full combined digest matches
+at least one other object. Therefore, record the object as a duplicate.
+
+=back
+
+=item 2.
+
+Compare all remaining duplicates against each other, to detect digest
+collisions. (This step is optional, if a strong enough digest is used, and if
+you therefore want to risk the miniscule chance of a digest collision.)
+
+=back
+
+This fully scans each object, in as much detail as the algorithm can determine
+is needed. This should make it faster to touch the same object multiple times,
+due to in-memory caching of object data. For example, if a file deduplicator
+computes a fast hash of the first block of file data, followed by a strong hash
+of the entire file, the operating system won't have to re-read the first block
+from disk (except perhaps when it has to go back to an earlier file in the
+sequence, in order to strengthen a previously computed combined digest).
+
+=head1 AUTHOR
+
+J. Timothy King (www.JTimothyKing.com, github:JTimothyKing)
+
+=head1 LICENSE
+
+This software is copyright 2014 J. Timothy King.
+
+This is free software. You may modify it and/or redistribute it under the terms of
+The MIT License. (See the LICENSE file for details.)
+
