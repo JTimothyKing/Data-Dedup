@@ -10,7 +10,9 @@ __PACKAGE__->runtests;
 
 BEGIN {
 
+use Dedup::Engine::BlockingFactory;
 
+# core modules
 use Data::Dumper;
 
 
@@ -18,9 +20,11 @@ use Data::Dumper;
     my $module_loaded;
     END { BAIL_OUT "Could not load module under test" unless $module_loaded }
     use Dedup::Engine;
-    use Dedup::Engine::BlockingFactory;
     $module_loaded = 1;
 }
+
+# signal to Test::Class not to implicitly skip tests
+sub fail_if_returned_early { 1 }
 
 
 package t::unit::Dedup::Engine::_mock_blocking_factory {
@@ -34,7 +38,6 @@ package t::unit::Dedup::Engine::_mock_blocking_factory {
 
 
 # Block descriptions (in Test::Deep format) used in following tests.
-
 sub _block {
     my ($keyspec, $objspec) = @_;
 
@@ -48,6 +51,7 @@ sub _block {
     );
 }
 
+# returns (in Data::Dumper format) the output of $engine->blocks
 sub _dump_blocks {
     my ($blocks) = @_;
     return Data::Dumper->Dump([

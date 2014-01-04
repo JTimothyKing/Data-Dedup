@@ -23,7 +23,6 @@ Dedup::Files - Detect duplicate files using Dedup::Engine
     );
 
     $dedup->scan();
-    $dedup->compare();
 
     my $file_list = $dedup->duplicates;
     for my $files (@$file_list) {
@@ -31,9 +30,19 @@ Dedup::Files - Detect duplicate files using Dedup::Engine
               (map "  $_\n", @$files);
     }
 
+Or...
+
+    my $dedup = Dedup::Files->new;
+
+    $dedup->scan( dir => '/a/path/to/dedup' );
+    $dedup->scan( dir => '/another/path' );
+    $dedup->scan( dir => '/yet/another/path' );
+
+    my $file_list = $dedup->duplicates;
+
 =head1 DESCRIPTION
 
-
+This module 
 
 =cut
 
