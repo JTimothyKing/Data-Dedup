@@ -500,7 +500,7 @@ J. Timothy King (www.JTimothyKing.com, github:JTimothyKing)
 This software is copyright 2014 J. Timothy King.
 
 This is free software. You may modify it and/or redistribute it under the terms of
-The MIT License. (See the LICENSE file for details.)
+The Apache License 2.0. (See the LICENSE file for details.)
 
 =cut
 

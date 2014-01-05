@@ -61,4 +61,17 @@ class Dedup::Files::DigestFactory with Dedup::Engine::BlockingFactory {
 }
 
 
+=head1 AUTHOR
+
+J. Timothy King (www.JTimothyKing.com, github:JTimothyKing)
+
+=head1 LICENSE
+
+This software is copyright 2014 J. Timothy King.
+
+This is free software. You may modify it and/or redistribute it under the terms of
+The Apache License 2.0. (See the LICENSE file for details.)
+
+=cut
+
 1;
