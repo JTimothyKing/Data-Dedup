@@ -6,7 +6,7 @@ use mop;
 use signatures;
 
 ## no critic (ProhibitSubroutinePrototypes)
-#   ...because of mop and signatures
+#   ...because of signatures
 
 
 =head1 NAME

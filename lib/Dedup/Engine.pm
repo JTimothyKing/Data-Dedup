@@ -6,7 +6,7 @@ use mop;
 use signatures;
 
 ## no critic (ProhibitSubroutinePrototypes)
-#   ...because of mop and signatures
+#   ...because of signatures
 
 use List::MoreUtils ();
 

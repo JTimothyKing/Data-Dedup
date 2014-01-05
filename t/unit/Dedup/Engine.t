@@ -62,7 +62,7 @@ sub _dump_blocks {
 }
 
 
-sub dedup_engine_default : Test(3) {
+sub dedup_engine__default : Test(3) {
     my $engine = Dedup::Engine->new;
     ok($engine, "instantiate default Dedup::Engine");
 
@@ -70,8 +70,7 @@ sub dedup_engine_default : Test(3) {
 
     my $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(''=>'A1') ),
+        $blocks => bag( _block(''=>'A1') ),
         "one object default blocking"
     ) or diag( _dump_blocks($blocks) );
 
@@ -79,13 +78,12 @@ sub dedup_engine_default : Test(3) {
 
     $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(''=>'A1 B2 C3') ),
+        $blocks => bag( _block(''=>'A1 B2 C3') ),
         "three objects default blocking"
     ) or diag( _dump_blocks($blocks) );
 }
 
-sub dedup_engine_blocking : Test(5) {
+sub dedup_engine__blocking : Test(5) {
     my $engine = Dedup::Engine->new(
         blocking => sub { $_[0][0] },
     );
@@ -95,8 +93,7 @@ sub dedup_engine_blocking : Test(5) {
 
     my $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(''=>'A1') ),
+        $blocks => bag( _block(''=>'A1') ),
         "one object in a block"
     ) or diag( _dump_blocks($blocks) );
 
@@ -104,8 +101,7 @@ sub dedup_engine_blocking : Test(5) {
 
     $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(A=>'A1'), _block(B=>'B2') ),
+        $blocks => bag( _block(A=>'A1'), _block(B=>'B2') ),
         "two objects in two blocks"
     ) or diag( _dump_blocks($blocks) );
 
@@ -113,8 +109,7 @@ sub dedup_engine_blocking : Test(5) {
 
     $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(A=>'A1 A4'), _block(B=>'B2') ),
+        $blocks => bag( _block(A=>'A1 A4'), _block(B=>'B2') ),
         "three objects in two blocks"
     ) or diag( _dump_blocks($blocks) );
 
@@ -122,14 +117,13 @@ sub dedup_engine_blocking : Test(5) {
 
     $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(A=>'A1 A4'), _block(B=>'B2'), _block(C=>'C3') ),
+        $blocks => bag( _block(A=>'A1 A4'), _block(B=>'B2'), _block(C=>'C3') ),
         "single-blocked blocks"
     ) or diag( _dump_blocks($blocks) );
 
 }
 
-sub dedup_engine_multiple_blocking : Test(2) {
+sub dedup_engine__multiple_blocking : Test(2) {
     my $engine = Dedup::Engine->new(
         blocking => [
             sub { $_[0][0] },
@@ -142,14 +136,13 @@ sub dedup_engine_multiple_blocking : Test(2) {
 
     my $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(A0=>'A4'), _block(A1=>'A1'), _block(B=>'B2'), _block(C=>'C3') ),
+        $blocks => bag( _block(A0=>'A4'), _block(A1=>'A1'), _block(B=>'B2'), _block(C=>'C3') ),
         "multi-blocked blocks"
     ) or diag( _dump_blocks($blocks) );
 }
 
 
-sub dedup_engine_blocking_factory : Test(6) {
+sub dedup_engine__blocking_factory : Test(6) {
     my $blocking_factory_1 = t::unit::Dedup::Engine::_mock_blocking_factory->new(
         all_functions_returns => [
             sub { $_[0][0] },
@@ -166,8 +159,7 @@ sub dedup_engine_blocking_factory : Test(6) {
 
     my $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(A0=>'A4 A2'), _block(A1=>'A1'), _block(B=>'B2') ),
+        $blocks => bag( _block(A0=>'A4 A2'), _block(A1=>'A1'), _block(B=>'B2') ),
         "blocks blocked by a blocking factory"
     ) or diag( _dump_blocks($blocks) );
 
@@ -190,8 +182,7 @@ sub dedup_engine_blocking_factory : Test(6) {
 
     $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(A00=>'A4'), _block(A02=>'A2'), _block(A1=>'A1'), _block(B=>'B2') ),
+        $blocks => bag( _block(A00=>'A4'), _block(A02=>'A2'), _block(A1=>'A1'), _block(B=>'B2') ),
         "blocks blocked by multiple blocking factories"
     ) or diag( _dump_blocks($blocks) );
 
@@ -209,15 +200,14 @@ sub dedup_engine_blocking_factory : Test(6) {
 
     $blocks = $engine->blocks;
     cmp_deeply(
-        $blocks,
-        bag( _block(A00=>'A4'), _block(A02=>'A2'), _block(A1=>'A1'),
-             _block(B022=>'B2'),  _block(B020=>'B6') ),
+        $blocks => bag( _block(A00=>'A4'), _block(A02=>'A2'), _block(A1=>'A1'),
+                        _block(B022=>'B2'),  _block(B020=>'B6') ),
         "blocks blocked by multiple blocking factories"
     ) or diag( _dump_blocks($blocks) );
 }
 
 
-sub dedup_engine_invalid_blocking : Test(3) {
+sub dedup_engine__invalid_blocking : Test(3) {
     throws_ok {
         Dedup::Engine->new( blocking => 'FOO!' );
     } qr/value at index 0 /, "'FOO!' is an invalid blocking function";
