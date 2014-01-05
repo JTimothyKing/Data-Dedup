@@ -4,7 +4,7 @@ package t::unit::Data::Dedup::Files;
 use 5.016;
 use strict;
 use warnings;
-use Test::Most;
+use Test::Most 0.31;
 use parent 'Test::Class';
 __PACKAGE__->runtests;
 

@@ -2,13 +2,13 @@ package Data::Dedup::Files::CLI::_guts;
 use 5.016;
 use strict;
 use warnings;
-use mop;
-use signatures;
+use mop 0.02;
+use signatures 0.07;
 
 ## no critic (ProhibitSubroutinePrototypes)
 #   ...because of signatures
 
-use CLI::Startup;
+use CLI::Startup 0.08;
 use Data::Dedup::Files;
 
 

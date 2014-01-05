@@ -4,7 +4,7 @@ package t::unit::Data::Dedup::Engine;
 use 5.016;
 use strict;
 use warnings;
-use Test::Most;
+use Test::Most 0.31;
 use parent 'Test::Class';
 __PACKAGE__->runtests;
 
@@ -28,7 +28,7 @@ sub fail_if_returned_early { 1 }
 
 
 package t::unit::Data::Dedup::Engine::_mock_blocking_factory {
-    use mop;
+    use mop 0.02;
     class t::unit::Data::Dedup::Engine::_mock_blocking_factory
         with Data::Dedup::Engine::BlockingFactory {
         has $!all_functions_returns;

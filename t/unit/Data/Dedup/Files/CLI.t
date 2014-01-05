@@ -4,11 +4,11 @@ package t::unit::Data::Dedup::Files::CLI;
 use 5.016;
 use strict;
 use warnings;
-use Test::Most;
+use Test::Most 0.31;
 use parent 'Test::Class';
 __PACKAGE__->runtests;
 
-use Test::MockObject;
+use Test::MockObject 1.20120301;
 
 BEGIN {
 

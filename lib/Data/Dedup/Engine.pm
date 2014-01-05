@@ -2,10 +2,10 @@ package Data::Dedup::Engine::_guts;
 use 5.016;
 use strict;
 use warnings;
-use mop;
-use signatures;
+use mop 0.02;
+use signatures 0.07;
 
-use List::MoreUtils ();
+use List::MoreUtils 0.33 ();
 
 # core modules
 use Carp;
