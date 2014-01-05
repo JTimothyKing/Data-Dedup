@@ -1,4 +1,4 @@
-package Dedup::Files::_guts; ## no critic (RequireFilenameMatchesPackage)
+package Data::Dedup::Files::_guts; ## no critic (RequireFilenameMatchesPackage)
 use 5.016;
 use strict;
 use warnings;
@@ -8,8 +8,8 @@ use signatures;
 ## no critic (ProhibitSubroutinePrototypes)
 #   ...because of signatures
 
-use Dedup::Engine;
-use Dedup::Files::DigestFactory;
+use Data::Dedup::Engine;
+use Data::Dedup::Files::DigestFactory;
 
 # core modules
 use File::Find ();
@@ -17,11 +17,11 @@ use Scalar::Util 'blessed';
 
 =head1 NAME
 
-Dedup::Files - Detect duplicate files using Dedup::Engine
+Data::Dedup::Files - Detect duplicate files using Data::Dedup::Engine
 
 =head1 SYNOPSIS
 
-    my $dedup = Dedup::Files->new(
+    my $dedup = Data::Dedup::Files->new(
         dir => '/path/to/directory/structure/to/dedup',
     );
 
@@ -35,7 +35,7 @@ Dedup::Files - Detect duplicate files using Dedup::Engine
 
 Or...
 
-    my $dedup = Dedup::Files->new;
+    my $dedup = Data::Dedup::Files->new;
 
     $dedup->scan( dir => '/a/path/to/dedup' );
     $dedup->scan( dir => '/another/path' );
@@ -50,7 +50,7 @@ This module
 =cut
 
 
-class Dedup::Files {
+class Data::Dedup::Files {
     has $!blocking is ro;
 
     has $!dir is rw;
@@ -60,8 +60,8 @@ class Dedup::Files {
     has $!engine;
 
     method BUILD {
-        $!blocking //= Dedup::Files::DigestFactory->new;
-        $!engine = Dedup::Engine->new( blocking => $!blocking );
+        $!blocking //= Data::Dedup::Files::DigestFactory->new;
+        $!engine = Data::Dedup::Engine->new( blocking => $!blocking );
     }
 
     has $!inodes_seen = {};

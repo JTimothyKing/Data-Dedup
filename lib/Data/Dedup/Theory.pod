@@ -1,10 +1,10 @@
 =head1 NAME
 
-Dedup::Theory - Deduplication theory.
+Data::Dedup::Theory - Deduplication theory.
 
 =head1 DESCRIPTION
 
-What follows is a discussion of deduplication theory, as it applies to L<Dedup::Engine>.
+What follows is a discussion of deduplication theory, as it applies to L<Data::Dedup::Engine>.
 
 =head2 General Deduplication Algorithm
 

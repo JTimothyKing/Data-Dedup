@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-package t::unit::Dedup::Files;
+package t::unit::Data::Dedup::Files;
 use 5.016;
 use strict;
 use warnings;
@@ -21,7 +21,7 @@ use Time::HiRes ();
 { # Load module under test, and bail out if it dies.
     my $module_loaded;
     END { BAIL_OUT "Could not load module under test" unless $module_loaded }
-    use Dedup::Files;
+    use Data::Dedup::Files;
     $module_loaded = 1;
 }
 
@@ -86,8 +86,8 @@ sub dedup_files__traverse_directory_trees : Test(2) {
         } } (0 .. rand(3))
     } @dirs );
 
-    my $dedup = Dedup::Files->new(dir => $test_dir);
-    ok($dedup, "instantiate Dedup::Files");
+    my $dedup = Data::Dedup::Files->new(dir => $test_dir);
+    ok($dedup, "instantiate Data::Dedup::Files");
 
     $dedup->scan();
 
@@ -117,8 +117,8 @@ SKIP: {
         symlink($file, $link) or die "cannot create symlink $link";
     }
 
-    my $dedup = Dedup::Files->new(dir => $test_dir);
-    ok($dedup, "instantiate Dedup::Files");
+    my $dedup = Data::Dedup::Files->new(dir => $test_dir);
+    ok($dedup, "instantiate Data::Dedup::Files");
 
     $dedup->scan();
 
@@ -148,8 +148,8 @@ SKIP: {
         push @files, $link;
     }
 
-    my $dedup = Dedup::Files->new(dir => $test_dir);
-    ok($dedup, "instantiate Dedup::Files");
+    my $dedup = Data::Dedup::Files->new(dir => $test_dir);
+    ok($dedup, "instantiate Data::Dedup::Files");
 
     $dedup->scan();
 
@@ -193,8 +193,8 @@ sub dedup_files__filesize : Test(2) {
         duplicate => 1,
     } } (1..10) );
 
-    my $dedup = Dedup::Files->new(dir => $test_dir);
-    ok($dedup, "instantiate Dedup::Files");
+    my $dedup = Data::Dedup::Files->new(dir => $test_dir);
+    ok($dedup, "instantiate Data::Dedup::Files");
 
     $dedup->scan();
 
@@ -215,8 +215,8 @@ sub dedup_files__file_content : Test(2) {
         length => 42,
     } } (1..10) );
 
-    my $dedup = Dedup::Files->new(dir => $test_dir);
-    ok($dedup, "instantiate Dedup::Files");
+    my $dedup = Data::Dedup::Files->new(dir => $test_dir);
+    ok($dedup, "instantiate Data::Dedup::Files");
 
     $dedup->scan();
 
@@ -246,8 +246,8 @@ sub dedup_zero_length_files : Test(4) {
     }
 
 
-    my $dedup = Dedup::Files->new(dir => $test_dir);
-    ok($dedup, "instantiate Dedup::Files");
+    my $dedup = Data::Dedup::Files->new(dir => $test_dir);
+    ok($dedup, "instantiate Data::Dedup::Files");
 
     $dedup->scan();
 
@@ -258,8 +258,8 @@ sub dedup_zero_length_files : Test(4) {
     ) or diag( Data::Dumper->Dump([$file_list, [\@files, \@empty_files]], ['got', 'expected']) );
 
 
-    $dedup = Dedup::Files->new(dir => $test_dir, ignore_empty => 1);
-    ok($dedup, "instantiate Dedup::Files with ignore_empty");
+    $dedup = Data::Dedup::Files->new(dir => $test_dir, ignore_empty => 1);
+    ok($dedup, "instantiate Data::Dedup::Files with ignore_empty");
 
     $dedup->scan();
 
@@ -284,8 +284,8 @@ sub dedup_unreadable_files : Test(4) {
     my $unreadable_file = shift @files;
     chmod 0, $unreadable_file;
 
-    my $dedup = Dedup::Files->new(dir => $test_dir, ignore_empty => 1);
-    ok($dedup, "instantiate Dedup::Files with ignore_empty");
+    my $dedup = Data::Dedup::Files->new(dir => $test_dir, ignore_empty => 1);
+    ok($dedup, "instantiate Data::Dedup::Files with ignore_empty");
 
     warning_like {
         lives_ok { $dedup->scan() } "scan does not die on unreadable files";

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-package t::unit::Dedup::Files::CLI;
+package t::unit::Data::Dedup::Files::CLI;
 use 5.016;
 use strict;
 use warnings;
@@ -15,7 +15,7 @@ BEGIN {
 { # Load module under test, and bail out if it dies.
     my $module_loaded;
     END { BAIL_OUT "Could not load module under test" unless $module_loaded }
-    use Dedup::Files::CLI;
+    use Data::Dedup::Files::CLI;
     $module_loaded = 1;
 }
 
@@ -34,7 +34,7 @@ sub create_CLI : Test(setup) {
         or die "Can't open fd to errors variable: $!";
     @$self{qw(fdout fderr)} = ($fdout, $fderr);
 
-    $self->{cli} = Dedup::Files::CLI->new(
+    $self->{cli} = Data::Dedup::Files::CLI->new(
         dedup => $dedup,
         stdout => $fdout,
         stderr => $fderr,

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-package t::unit::Dedup::Engine;
+package t::unit::Data::Dedup::Engine;
 use 5.016;
 use strict;
 use warnings;
@@ -10,7 +10,7 @@ __PACKAGE__->runtests;
 
 BEGIN {
 
-use Dedup::Engine::BlockingFactory;
+use Data::Dedup::Engine::BlockingFactory;
 
 # core modules
 use Data::Dumper;
@@ -19,7 +19,7 @@ use Data::Dumper;
 { # Load module under test, and bail out if it dies.
     my $module_loaded;
     END { BAIL_OUT "Could not load module under test" unless $module_loaded }
-    use Dedup::Engine;
+    use Data::Dedup::Engine;
     $module_loaded = 1;
 }
 
@@ -27,10 +27,10 @@ use Data::Dumper;
 sub fail_if_returned_early { 1 }
 
 
-package t::unit::Dedup::Engine::_mock_blocking_factory {
+package t::unit::Data::Dedup::Engine::_mock_blocking_factory {
     use mop;
-    class t::unit::Dedup::Engine::_mock_blocking_factory
-        with Dedup::Engine::BlockingFactory {
+    class t::unit::Data::Dedup::Engine::_mock_blocking_factory
+        with Data::Dedup::Engine::BlockingFactory {
         has $!all_functions_returns;
         method all_functions { $!all_functions_returns }
     }
@@ -63,8 +63,8 @@ sub _dump_blocks {
 
 
 sub dedup_engine__default : Test(3) {
-    my $engine = Dedup::Engine->new;
-    ok($engine, "instantiate default Dedup::Engine");
+    my $engine = Data::Dedup::Engine->new;
+    ok($engine, "instantiate default Data::Dedup::Engine");
 
     $engine->add([ A => 1 ]);
 
@@ -84,10 +84,10 @@ sub dedup_engine__default : Test(3) {
 }
 
 sub dedup_engine__blocking : Test(5) {
-    my $engine = Dedup::Engine->new(
+    my $engine = Data::Dedup::Engine->new(
         blocking => sub { $_[0][0] },
     );
-    ok($engine, "instantiate Dedup::Engine with blocking sub");
+    ok($engine, "instantiate Data::Dedup::Engine with blocking sub");
 
     $engine->add([ A => 1 ]);
 
@@ -124,13 +124,13 @@ sub dedup_engine__blocking : Test(5) {
 }
 
 sub dedup_engine__multiple_blocking : Test(2) {
-    my $engine = Dedup::Engine->new(
+    my $engine = Data::Dedup::Engine->new(
         blocking => [
             sub { $_[0][0] },
             sub { $_[0][1] % 2 },
         ],
     );
-    ok($engine, "instantiate Dedup::Engine with multiple blocking subs");
+    ok($engine, "instantiate Data::Dedup::Engine with multiple blocking subs");
 
     $engine->add([ A => 1 ], [ B => 2 ], [ C => 3 ], [ A => 4 ]);
 
@@ -143,17 +143,17 @@ sub dedup_engine__multiple_blocking : Test(2) {
 
 
 sub dedup_engine__blocking_factory : Test(6) {
-    my $blocking_factory_1 = t::unit::Dedup::Engine::_mock_blocking_factory->new(
+    my $blocking_factory_1 = t::unit::Data::Dedup::Engine::_mock_blocking_factory->new(
         all_functions_returns => [
             sub { $_[0][0] },
             sub { $_[0][1] % 2 },
         ],
     );
 
-    my $engine = Dedup::Engine->new(
+    my $engine = Data::Dedup::Engine->new(
         blocking => $blocking_factory_1,
     );
-    ok($engine, "instantiate Dedup::Engine with a blocking factory");
+    ok($engine, "instantiate Data::Dedup::Engine with a blocking factory");
 
     $engine->add([ A => 1 ], [ B => 2 ], [ A => 4 ], [ A => 2 ]);
 
@@ -164,19 +164,19 @@ sub dedup_engine__blocking_factory : Test(6) {
     ) or diag( _dump_blocks($blocks) );
 
 
-    my $blocking_factory_2 = t::unit::Dedup::Engine::_mock_blocking_factory->new(
+    my $blocking_factory_2 = t::unit::Data::Dedup::Engine::_mock_blocking_factory->new(
         all_functions_returns => [
             sub { $_[0][1] % 4 },
         ],
     );
 
-    $engine = Dedup::Engine->new(
+    $engine = Data::Dedup::Engine->new(
         blocking => [
             $blocking_factory_1,
             $blocking_factory_2,
         ],
     );
-    ok($engine, "instantiate Dedup::Engine with an array of blocking factories");
+    ok($engine, "instantiate Data::Dedup::Engine with an array of blocking factories");
 
     $engine->add([ A => 1 ], [ B => 2 ], [ A => 4 ], [ A => 2 ]);
 
@@ -187,14 +187,14 @@ sub dedup_engine__blocking_factory : Test(6) {
     ) or diag( _dump_blocks($blocks) );
 
 
-    $engine = Dedup::Engine->new(
+    $engine = Data::Dedup::Engine->new(
         blocking => [
             $blocking_factory_1,
             $blocking_factory_2,
             sub { $_[0][1] % 3 },
         ],
     );
-    ok($engine, "instantiate Dedup::Engine with an array of blocking factories");
+    ok($engine, "instantiate Data::Dedup::Engine with an array of blocking factories");
 
     $engine->add([ A => 1 ], [ B => 2 ], [ A => 4 ], [ A => 2 ], [ B => 6 ] );
 
@@ -209,12 +209,12 @@ sub dedup_engine__blocking_factory : Test(6) {
 
 sub dedup_engine__invalid_blocking : Test(3) {
     throws_ok {
-        Dedup::Engine->new( blocking => 'FOO!' );
+        Data::Dedup::Engine->new( blocking => 'FOO!' );
     } qr/value at index 0 /, "'FOO!' is an invalid blocking function";
 
     throws_ok {
-        Dedup::Engine->new(
-            blocking => t::unit::Dedup::Engine::_mock_blocking_factory->new(
+        Data::Dedup::Engine->new(
+            blocking => t::unit::Data::Dedup::Engine::_mock_blocking_factory->new(
                 all_functions_returns => 'Not an array!',
             )
         );
@@ -222,8 +222,8 @@ sub dedup_engine__invalid_blocking : Test(3) {
         "blocking factory all_functions must return an arrayref";
 
     throws_ok {
-        Dedup::Engine->new(
-            blocking => t::unit::Dedup::Engine::_mock_blocking_factory->new(
+        Data::Dedup::Engine->new(
+            blocking => t::unit::Data::Dedup::Engine::_mock_blocking_factory->new(
                 all_functions_returns => [ sub {}, 'Not a coderef!' ],
             )
         );

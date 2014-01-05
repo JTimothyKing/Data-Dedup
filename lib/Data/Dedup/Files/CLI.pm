@@ -1,4 +1,4 @@
-package Dedup::Files::CLI::_guts; ## no critic (RequireFilenameMatchesPackage)
+package Data::Dedup::Files::CLI::_guts; ## no critic (RequireFilenameMatchesPackage)
 use 5.016;
 use strict;
 use warnings;
@@ -9,7 +9,7 @@ use signatures;
 #   ...because of signatures
 
 use CLI::Startup;
-use Dedup::Files;
+use Data::Dedup::Files;
 
 
 my %options = (
@@ -19,9 +19,9 @@ my %options = (
 );
 
 
-class Dedup::Files::CLI {
+class Data::Dedup::Files::CLI {
     has $!CLI;
-    has $!dedup = Dedup::Files->new;
+    has $!dedup = Data::Dedup::Files->new;
 
     has $!stdout is rw = \*STDOUT;
     has $!stderr is rw = \*STDERR;

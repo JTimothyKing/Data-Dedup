@@ -1,4 +1,4 @@
-package Dedup::Files::DigestFactory::_guts; ## no critic (RequireFilenameMatchesPackage)
+package Data::Dedup::Files::DigestFactory::_guts; ## no critic (RequireFilenameMatchesPackage)
 use 5.016;
 use strict;
 use warnings;
@@ -8,7 +8,7 @@ use signatures;
 ## no critic (ProhibitSubroutinePrototypes)
 #   ...because of signatures
 
-use Dedup::Engine::BlockingFactory;
+use Data::Dedup::Engine::BlockingFactory;
 use Digest::SHA;
 
 # core modules
@@ -16,7 +16,7 @@ use List::Util 'min', 'max';
 
 =head1 NAME
 
-Dedup::Files::DigestFactory - Generate file-digest blocking functions for Dedup::Files
+Data::Dedup::Files::DigestFactory - Generate file-digest blocking functions for Data::Dedup::Files
 
 =head1 SYNOPSIS
 
@@ -25,7 +25,7 @@ Dedup::Files::DigestFactory - Generate file-digest blocking functions for Dedup:
 =cut
 
 
-class Dedup::Files::DigestFactory with Dedup::Engine::BlockingFactory {
+class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactory {
     method all_functions {
         return [
             $self->from_filesize,   # first blocking key: filesize

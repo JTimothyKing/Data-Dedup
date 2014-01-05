@@ -1,4 +1,4 @@
-package Dedup::Engine::BlockingFactory::_guts; ## no critic (RequireFilenameMatchesPackage)
+package Data::Dedup::Engine::BlockingFactory::_guts; ## no critic (RequireFilenameMatchesPackage)
 use 5.016;
 use strict;
 use warnings;
@@ -11,16 +11,16 @@ use signatures;
 
 =head1 NAME
 
-Dedup::Engine::BlockingFactory - A role for Dedup::Engine blocking-function factories
+Data::Dedup::Engine::BlockingFactory - A role for Data::Dedup::Engine blocking-function factories
 
 =head1 DESCRIPTION
 
 This is the role of an object that can generate blocking functions for an
-Dedup::Engine object.
+Data::Dedup::Engine object.
 
 =cut
 
-role Dedup::Engine::BlockingFactory {
+role Data::Dedup::Engine::BlockingFactory {
 
 =head1 METHODS
 
@@ -33,7 +33,7 @@ order of preference.
 
 This method must be implemented in classes that implement this role. It takes no
 arguments and returns an arrayref that contains one or more coderefs, each of which
-is a L<blocking function|Dedup::Engine/blocking>.
+is a L<blocking function|Data::Dedup::Engine/blocking>.
 
     my @factory_methods = qw(factory_method_1 factory_method_2 factory_method_3);
 
@@ -54,7 +54,7 @@ is a L<blocking function|Dedup::Engine/blocking>.
 
 =head1 SEE ALSO
 
-L<Dedup::Engine>
+L<Data::Dedup::Engine>
 
 
 =head1 AUTHOR

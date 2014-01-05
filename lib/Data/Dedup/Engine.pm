@@ -1,4 +1,4 @@
-package Dedup::Engine::_guts; ## no critic (RequireFilenameMatchesPackage)
+package Data::Dedup::Engine::_guts; ## no critic (RequireFilenameMatchesPackage)
 use 5.016;
 use strict;
 use warnings;
@@ -16,11 +16,11 @@ use Scalar::Util ();
 
 =head1 NAME
 
-Dedup::Engine - A general-purpose deduplication engine
+Data::Dedup::Engine - A general-purpose deduplication engine
 
 =head1 SYNOPSIS
 
-    my $engine = Dedup::Engine->new(
+    my $engine = Data::Dedup::Engine->new(
         blocking => [
             sub { -s $_[0] },   # first blocking key: filesize
             sub {               # second blocking key: SHA-1
@@ -50,12 +50,12 @@ Dedup::Engine - A general-purpose deduplication engine
 This module implements a general-purpose deduplication engine, which uses one or
 more digest algorithms to detect differences between a number of objects.
 
-By steps, Dedup::Engine groups the objects together in blocks, by computing
+By steps, Data::Dedup::Engine groups the objects together in blocks, by computing
 digests on the objects. Two objects that each produce a different value for the
 same digest are confirmed as distinct.
 
 Some digest algorithms are very fast, but they tend to result in collisions.
-That is, two distinct objects may produce the same digest. So Dedup::Engine can
+That is, two distinct objects may produce the same digest. So Data::Dedup::Engine can
 try a sequence of digest algorithms, of increasing selectivity but decreasing
 speed, in an attempt to further distinguish objects that it thinks might be
 duplicates.
@@ -67,7 +67,7 @@ as duplicates of each other.
 =cut
 
 
-class Dedup::Engine {
+class Data::Dedup::Engine {
 
 =head1 CONSTRUCTION
 
@@ -78,19 +78,19 @@ class Dedup::Engine {
 Instantiate a new deduplication engine with the given configuration. The configuration
 may be passed into C<new> as a list of keys and values.
 
-    my $engine = Dedup::Engine->new( blocking => \&my_digest_sub );
+    my $engine = Data::Dedup::Engine->new( blocking => \&my_digest_sub );
 
 Alternatively, C<new> will accept a hash reference:
 
     my %config;
     build_config( \%config );
-    my $engine = Dedup::Engine->new( \%config );
+    my $engine = Data::Dedup::Engine->new( \%config );
 
 =back
 
 =head2 Configuration
 
-C<< Dedup::Engine->new >> accepts the following configuration keys:
+C<< Data::Dedup::Engine->new >> accepts the following configuration keys:
 
 =over
 
@@ -100,10 +100,10 @@ One or more digest functions (i.e., blocking key functions) by which the engine
 will attempt to arrange objects into blocks.
 
 This value can be a single value or an array of values. Each value may be a
-function, or an object that implements L<Dedup::Engine::BlockingFactory>. Each
+function, or an object that implements L<Data::Dedup::Engine::BlockingFactory>. Each
 such blocking factory will be expanded in-place into a list of functions, by
 calling its L<all_functions
-method|Dedup::Engine::BlockingFactory/all_functions>. After all such expansions,
+method|Data::Dedup::Engine::BlockingFactory/all_functions>. After all such expansions,
 the resulting list of functions will be used in order of preference to
 deduplicate objects.
 
@@ -119,7 +119,7 @@ scalar, including a reference to an opaque object.
 
 To deduplicate a series of files by name, one might use:
 
-    my $engine = Dedup::Engine->new(
+    my $engine = Data::Dedup::Engine->new(
         blocking => [
             sub { -s $_[0] },   # first blocking key: filesize
             sub {               # second blocking key: SHA-1
@@ -132,8 +132,8 @@ To deduplicate a series of files by name, one might use:
 
 In this example, the "objects" being deduplicated are mere filenames, as
 strings. The blocking functions contain all the intelligence necessary to make
-sense of them, and Dedup::Engine is agnostic regarding their contents. (See the
-L<add method|Dedup::Engine/add> for more about how the engine handles objects.)
+sense of them, and Data::Dedup::Engine is agnostic regarding their contents. (See the
+L<add method|Data::Dedup::Engine/add> for more about how the engine handles objects.)
 
 If no C<blocking> parameter is specified, or if it's empty, then as a degenerate
 case, all objects will be considered duplicates of each other.
@@ -157,7 +157,7 @@ object by calling the accessor method named after it:
     sub _is_blocking_factory($ref) {
         my $class = Scalar::Util::blessed($ref) or return;
         my $meta = mop::meta($class) or return;
-        return $meta->does_role('Dedup::Engine::BlockingFactory');
+        return $meta->does_role('Data::Dedup::Engine::BlockingFactory');
     }
 
     method BUILD {
@@ -212,14 +212,14 @@ object by calling the accessor method named after it:
 
 The deduplicator engine arranges objects into blocks. Each block contains only
 objects that the engine believes are duplicates of each other. It returns these
-blocks (via the L<blocks method|Dedup::Engine/blocks> as instances of
-Dedup::Engine::Block, an opaque class with the following accessors:
+blocks (via the L<blocks method|Data::Dedup::Engine/blocks> as instances of
+Data::Dedup::Engine::Block, an opaque class with the following accessors:
 
 =over
 
 =cut
 
-    class Dedup::Engine::Block {
+    class Data::Dedup::Engine::Block {
         has $!keys = [];
         has $!objects = [];
 
@@ -237,7 +237,7 @@ Returns the blocking keys that distinguish this block.
 This method returns an arrayref, which contains the values that were returned by
 each of the blocking functions for the objects in this block. The values are in
 the same order as the corresponding blocking functions (passed to
-L<< Dedup::Engine->new|Dedup::Engine/new >>). However, the array of values may be
+L<< Data::Dedup::Engine->new|Data::Dedup::Engine/new >>). However, the array of values may be
 shorter than the list of blocking functions, if one or more of the later
 blocking functions was not needed to distinguish this block. (In this case, the
 block will only contain one object, because otherwise the engine would have used
@@ -248,7 +248,7 @@ blocks, and distinguishing the (duplicate) objects in each block from the
 objects in all other blocks.
 
 Note that, for efficiency, the arrayref returned by this method points into
-Dedup::Engine's internal data structures. If you modify any of the contents of
+Data::Dedup::Engine's internal data structures. If you modify any of the contents of
 this array, it will modify the engine's perception of the universe. Please don't
 do this. If you want to modify the data returned by this method, please modify a
 copy, rather than the original.
@@ -285,13 +285,13 @@ Returns the objects in this block.
         map "  $_\n", @$objects;
 
 This method returns an arrayref, which contains the objects that were passed
-into L<< $engine->add|Dedup::Engine/add >>. All the objects in a single block are
+into L<< $engine->add|Data::Dedup::Engine/add >>. All the objects in a single block are
 being reported as duplicates of each other. The block may contain only one
 object, in which case that object is unique (not a duplicate of any other object
 that the deduplication engine has seen).
 
 Note that, for efficiency, the arrayref returned by this method points into
-Dedup::Engine's internal data structures. If you modify any of the contents of
+Data::Dedup::Engine's internal data structures. If you modify any of the contents of
 this array, it will modify the engine's perception of the universe. Please don't
 do this. If you want to modify the data returned by this method, please modify a
 copy, rather than the original.
@@ -327,7 +327,7 @@ $block->objects->[$idx] >>. (See L<objects>.)
     has $!_blocks = []; # an array of Block objects
 
 
-    class Dedup::Engine::BlockKeyStore {
+    class Data::Dedup::Engine::BlockKeyStore {
         has $!_keyhash = {};
 
         method set($key, $content) { $!_keyhash->{$key} = $content }
@@ -349,7 +349,7 @@ $block->objects->[$idx] >>. (See L<objects>.)
 
         $block->_add_keys($key); # Now the block is no longer without a key.
 
-        my $keystore = Dedup::Engine::BlockKeyStore->new;
+        my $keystore = Data::Dedup::Engine::BlockKeyStore->new;
         $keystore->set($key => $block);
         return $keystore;
     }
@@ -365,13 +365,13 @@ $block->objects->[$idx] >>. (See L<objects>.)
         if (@$blockingsubs) {
             my ($blockingsub, @other_blocking_subs) = @$blockingsubs;
 
-            if ($blockslot_isa->('Dedup::Engine::Block')) {
+            if ($blockslot_isa->('Data::Dedup::Engine::Block')) {
                 # Found a block that hasn't been keyed at this level;
                 # push it down the hierarchy into a keystore.
                 $$rblockslot = _block_to_keystore($$rblockslot, $blockingsub);
             }
 
-            if ($blockslot_isa->('Dedup::Engine::BlockKeyStore')) {
+            if ($blockslot_isa->('Data::Dedup::Engine::BlockKeyStore')) {
                 # File the current object in the appropriate slot in the keystore.
                 my $key = $blockingsub->($object);
                 push @$keys, $key;
@@ -388,7 +388,7 @@ $block->objects->[$idx] >>. (See L<objects>.)
 
         if (! $$rblockslot) {
             # This is the first object keyed to this level with this key sequence.
-            $$rblockslot = Dedup::Engine::Block->new(
+            $$rblockslot = Data::Dedup::Engine::Block->new(
                 keys => [@$keys],
                 objects => [$object],
             );
@@ -435,7 +435,7 @@ contains one or more duplicate objects, along with the blocking keys that
 identify them as distinct from objects in all the other blocks.
 
 Note that, for efficiency, the arrayref returned by this method points into
-Dedup::Engine's internal data structures. If you modify any of the contents of
+Data::Dedup::Engine's internal data structures. If you modify any of the contents of
 this array, it will modify the engine's perception of the universe. Please don't
 do this. If you want to modify the data returned by this method, please modify a
 copy, rather than the original.
@@ -453,7 +453,7 @@ copy, rather than the original.
 
 =head1 SEE ALSO
 
-L<Dedup::Theory> for a discussion of the theory behind this module.
+L<Data::Dedup::Theory> for a discussion of the theory behind this module.
 
 
 =head1 FEATURES THAT WOULD BE NICE TO ADD
