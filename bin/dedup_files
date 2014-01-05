@@ -4,13 +4,13 @@ use strict;
 use warnings;
 
 use Benchmark ':hireswallclock';
-use Dedup::Files;
+use Data::Dedup::Files;
 
 my $dir = $ARGV[0];
 my $verbose = 1;
 
 
-my $dedup = Dedup::Files->new(
+my $dedup = Data::Dedup::Files->new(
     dir => $dir,
 );
 

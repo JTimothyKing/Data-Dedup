@@ -1,12 +1,9 @@
-package Data::Dedup::Engine::_guts; ## no critic (RequireFilenameMatchesPackage)
+package Data::Dedup::Engine::_guts;
 use 5.016;
 use strict;
 use warnings;
 use mop;
 use signatures;
-
-## no critic (ProhibitSubroutinePrototypes)
-#   ...because of signatures
 
 use List::MoreUtils ();
 

@@ -1,4 +1,4 @@
-package Data::Dedup::Files::CLI::_guts; ## no critic (RequireFilenameMatchesPackage)
+package Data::Dedup::Files::CLI::_guts;
 use 5.016;
 use strict;
 use warnings;
@@ -10,6 +10,13 @@ use signatures;
 
 use CLI::Startup;
 use Data::Dedup::Files;
+
+
+=head1 NAME
+
+Data::Dedup::Files::CLI - A command-line interface to deduplicate files.
+
+=cut
 
 
 my %options = (

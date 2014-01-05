@@ -14,7 +14,7 @@ BEGIN {
 use Data::Dumper;
 use File::Path 'make_path', 'remove_tree';
 use File::Spec ();
-use File::Temp 'tempdir', 'tempfile';
+use File::Temp 'tempdir', 'tempfile', 'mktemp';
 use Time::HiRes ();
 
 
@@ -113,7 +113,7 @@ SKIP: {
 
     my $file = $files[0];
     for (1..10) {
-        my (undef, $link) = tempfile( DIR => $test_dir, OPEN => 0 );
+        my $link = mktemp( File::Spec->catfile($test_dir, 'X' x 10) );
         symlink($file, $link) or die "cannot create symlink $link";
     }
 
@@ -143,7 +143,7 @@ SKIP: {
 
     my $file = $files[0];
     for (1..10) {
-        my (undef, $link) = tempfile( DIR => $test_dir, OPEN => 0 );
+        my $link = mktemp( File::Spec->catfile($test_dir, 'X' x 10) );
         link($file, $link) or skip "cannot create hard link", 5;
         push @files, $link;
     }

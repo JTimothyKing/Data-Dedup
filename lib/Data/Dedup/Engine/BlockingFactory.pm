@@ -1,12 +1,9 @@
-package Data::Dedup::Engine::BlockingFactory::_guts; ## no critic (RequireFilenameMatchesPackage)
+package Data::Dedup::Engine::BlockingFactory::_guts;
 use 5.016;
 use strict;
 use warnings;
 use mop;
 use signatures;
-
-## no critic (ProhibitSubroutinePrototypes)
-#   ...because of signatures
 
 
 =head1 NAME

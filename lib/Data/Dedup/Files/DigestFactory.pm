@@ -1,4 +1,4 @@
-package Data::Dedup::Files::DigestFactory::_guts; ## no critic (RequireFilenameMatchesPackage)
+package Data::Dedup::Files::DigestFactory::_guts;
 use 5.016;
 use strict;
 use warnings;
