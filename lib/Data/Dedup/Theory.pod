@@ -102,7 +102,7 @@ loop on the next object.
 
 =back
 
-=item 3.
+=item c.
 
 If execution makes it through the above loop, the full combined digest matches
 at least one other object. Therefore, record the object as a duplicate.
