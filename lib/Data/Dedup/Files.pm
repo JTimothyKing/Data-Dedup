@@ -73,11 +73,15 @@ class Data::Dedup::Files {
             wanted => sub {
                 return unless -f && !-l && (!$ignore_empty || -s > 0);
 
-                warn("cannot read file $_\n"), return unless -r;
-
                 return if 1 < push @{ $!inodes_seen->{ (lstat)[1] } }, $_;
 
-                my $filesize = -s;  # while it's fresh in memory
+                my $filesize = -s;
+
+                if (! -r) {
+                    warn "cannot read file $_\n";
+                    $progress->($filesize, ignored_unreadable => 1) if $progress;
+                    return;
+                }
 
                 $!engine->add( $_ );
 

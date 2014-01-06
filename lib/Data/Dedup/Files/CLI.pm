@@ -95,6 +95,7 @@ class Data::Dedup::Files::CLI {
 
     has $!files_count = 0;
     has $!file_bytes_count = 0;
+    has $!files_unreadable_count = 0;
 
     method _update_progress_sub($display_progress) {
         return sub {
@@ -107,6 +108,7 @@ class Data::Dedup::Files::CLI {
 
             $!files_count++;
             $!file_bytes_count += $filesize;
+            $!files_unreadable_count++ if $args{ignored_unreadable};
 
             if ($!files_count >= $next_min_files_to_print || $args{force_display}) {
                 my $human_readable_bytes = human_readable_bytes($!file_bytes_count);
