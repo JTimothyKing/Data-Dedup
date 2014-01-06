@@ -5,9 +5,6 @@ use warnings;
 use mop 0.02;
 use signatures 0.07;
 
-## no critic (ProhibitSubroutinePrototypes)
-#   ...because of signatures
-
 use CLI::Startup 0.08;
 use Data::Dedup::Files;
 
@@ -30,8 +27,8 @@ class Data::Dedup::Files::CLI {
     has $!CLI;
     has $!dedup = Data::Dedup::Files->new;
 
-    has $!stdout is rw = \*STDOUT;
-    has $!stderr is rw = \*STDERR;
+    has $!stdout is rw = *STDOUT;
+    has $!stderr is rw = *STDERR;
 
     method BUILD($args) {
         $!CLI = CLI::Startup->new({

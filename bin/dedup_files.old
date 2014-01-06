@@ -1,0 +1,104 @@
+#!/usr/bin/env perl
+use 5.016;
+use strict;
+use warnings;
+
+use Benchmark ':hireswallclock';
+use Data::Dedup::Files;
+
+my $dir = $ARGV[0];
+my $verbose = 1;
+
+
+my $dedup = Data::Dedup::Files->new(
+    dir => $dir,
+);
+
+my $mark_start = Benchmark->new;
+
+
+{
+    my $kibi = 1024;
+    my $mebi = $kibi * 1024;
+    my $gibi = $mebi * 1024;
+    my $tebi = $gibi * 1024;
+
+    my %prefix_map = (
+        $kibi => 'Ki',
+        $mebi => 'Mi',
+        $gibi => 'Gi',
+        $tebi => 'Ti',
+    );
+
+    my @prefix_scales = ( $tebi, $gibi, $mebi, $kibi ); # from biggest to smallest
+
+    sub human_readable_bytes {
+        my ($bytes) = @_;
+
+        for my $scale (@prefix_scales) {
+            if (abs($bytes) > $scale) {
+                return sprintf('%.1f', $bytes/$scale) . ' ' . $prefix_map{$scale} . 'B';
+            }
+        }
+        return $bytes . ' B';
+    }
+}
+
+sub print_progress {
+    state $granularity = 1000; # files
+
+    my $filesize = (@_ % 2) && shift // 0;
+    my (%args) = @_;
+
+    state $files_count = 0;
+    state $bytes_count = 0;
+    state $next_min_files_to_print = 0;
+
+    $files_count++;
+    $bytes_count += $filesize;
+
+    if ($files_count >= $next_min_files_to_print || $args{force}) {
+        my $human_readable_bytes = human_readable_bytes($bytes_count);
+        print STDERR "\rscanned $files_count files, $human_readable_bytes",
+            (' ' x 12), ("\b" x 12);
+        $next_min_files_to_print = (int($files_count / $granularity) + 1) * $granularity;
+    }
+}
+
+$dedup->scan(
+    ( progress => \&print_progress )x!! $verbose,
+);
+if ($verbose) {
+    print_progress(force => 1);
+    print STDERR "\n";
+}
+
+
+my $mark_end_scan = Benchmark->new;
+
+my $file_list = $dedup->duplicates(
+    resolve_hardlinks => sub { ( sort { $a cmp $b } @{$_[0]} )[0] },
+);
+
+# my $separator = '='x70 . "\n";
+# print $separator;
+# print
+#     join $separator,
+#     map {
+#         join '', map "$_\n", @$_
+#     } grep { @$_ > 1 } @$file_list;
+# print $separator;
+
+my $separator = '-'x30 . "\n";
+print $separator;
+print
+    sort { $a cmp $b }
+    map {
+        (join "\t", sort { $a cmp $b } @$_) . "\n"
+    } grep { @$_ > 1 } @$file_list;
+print $separator;
+
+
+print "Scan time: ", timestr(timediff($mark_end_scan, $mark_start)), "\n";
+
+__END__
