@@ -5,9 +5,6 @@ use warnings;
 use mop 0.02;
 use signatures 0.07;
 
-## no critic (ProhibitSubroutinePrototypes)
-#   ...because of signatures
-
 use Data::Dedup::Engine::BlockingFactory;
 use Digest::SHA 5.82;
 
