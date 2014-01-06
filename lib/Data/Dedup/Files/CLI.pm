@@ -8,6 +8,9 @@ use signatures 0.07;
 use CLI::Startup 0.08;
 use Data::Dedup::Files;
 
+# core modules
+use Scalar::Util 'refaddr';
+
 
 =head1 NAME
 
@@ -22,6 +25,7 @@ my %options = (
     'verbose|v+' => 'display extra messages',
     'debug' => 'include information only interesting to developers',
     'format|f=s' => 'specify format of output: robot, text',
+    'outfile|o=s' => 'write duplicate report to a file instead of standard out',
 );
 
 
@@ -73,11 +77,26 @@ class Data::Dedup::Files::CLI {
             resolve_hardlinks => sub { ( sort { $a cmp $b } @{$_[0]} )[0] },
         );
 
-        print $!stdout
+        my $outfile = $opts->{outfile};
+        my $outfh = do {
+            if ($outfile) {
+                open my $outfh, '>', $outfile
+                    or die "Can't open '$outfile' for writing";
+                $outfh;
+            } else {
+                $!stdout;
+            }
+        };
+
+        print $outfh
             sort { $a cmp $b }
             map {
                 (join "\t", sort { $a cmp $b } @$_) . "\n"
             } grep { @$_ > 1 } @$file_list;
+
+        close $outfh if $outfile; # mirrors "if ($outfile) { open $outfh ..." above
+
+        return 0;
     }
 }
 

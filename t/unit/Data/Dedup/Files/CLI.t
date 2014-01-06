@@ -12,6 +12,8 @@ use Test::MockObject 1.20120301;
 
 # core modules
 use Carp ();
+use File::Spec ();
+use File::Temp 'tempdir', 'mktemp';
 
 BEGIN {
 
@@ -31,9 +33,11 @@ sub create_CLI : Test(setup) {
 
     my $dedup = $self->{dedup} = Test::MockObject->new;
 
-    open my $fdout, '>', \($self->{output})
+    $self->{output} = $self->{errors} = '';
+
+    open my $fdout, '>>', \($self->{output})
         or die "Can't open fd to output variable: $!";
-    open my $fderr, '>', \($self->{errors})
+    open my $fderr, '>>', \($self->{errors})
         or die "Can't open fd to errors variable: $!";
     @$self{qw(fdout fderr)} = ($fdout, $fderr);
 
@@ -90,7 +94,7 @@ END_DUPLICATE_REPORT
                 [qw(the quick brown fox)],
             );
             is($preferred_name, 'brown')
-        } "resolve hardlinks is a function that chooses the first alphabetically";
+        } "resolve_hardlinks is a function that chooses the first alphabetically";
 
         return \@duplicates;
     });
@@ -119,13 +123,14 @@ sub _setup_for_warnings_test {
     my $cluck_warning = "Cluck warning";
     $dedup->mock(scan => sub {
         warn "$plain_warning\n";
-        warn "$sourceloc_warning"; # line 122 (see below)
+        warn "$sourceloc_warning";
         Carp::carp("$carp_warning\n");
-        Carp::cluck($cluck_warning); # line 124 (see below)
+        Carp::cluck($cluck_warning);
     });
 
-    my $sourceloc_warning_loc = ' at ' . __FILE__ . ' line 122.';
-    my $cluck_warning_loc = ' at ' . __FILE__ . ' line 124.';
+    my $line = __LINE__;
+    my $sourceloc_warning_loc = ' at ' . __FILE__ . ' line ' . ($line-5) . '.';
+    my $cluck_warning_loc = ' at ' . __FILE__ . ' line ' . ($line-3) . '.';
 
     $dedup->mock(duplicates => sub { [] });
 
@@ -208,6 +213,45 @@ sub dedup_files_cli__debug_warnings : Test(2) {
         re(qr[^\Q$carp_warning\E\n$carp_loc\n$]),
         re(qr[^\Q$cluck_warning$cluck_warning_loc\E\n\s+.*?called at]),
     ], "warnings with --debug switch");
+}
+
+
+sub dedup_files_cli__outfile : Test(4) {
+    my $self = shift;
+    my ($dedup, $cli) = @$self{qw(dedup cli)};
+
+    my @duplicates = (
+        [ qw(foo bar baz) ],
+        [ qw(qux quux) ],
+        [ qw(alpha beta gamma delta epsilon) ],
+    );
+    my $duplicate_report = <<"END_DUPLICATE_REPORT"; # sorted in both dimensions
+alpha\tbeta\tdelta\tepsilon\tgamma
+bar\tbaz\tfoo
+quux\tqux
+END_DUPLICATE_REPORT
+
+    $dedup->mock(scan => sub { });
+    $dedup->mock(duplicates => sub { \@duplicates });
+
+    my $outfile = mktemp( File::Spec->catfile(tempdir( CLEANUP => 1 ), 'X' x 10) );
+
+    local @ARGV = qw(--format=robot --quiet --dir=foo);
+    push @ARGV, "--outfile=$outfile";
+
+    lives_and { cmp_ok($cli->run(), '>=', 0) }
+        "returns success code";
+
+    eq_or_diff($self->{output} => '',
+        "produces no output with --quiet and --outfile");
+
+    ok( open(my $outfh, '<', $outfile), "--outfile creates readable output file" );
+
+    my $outfile_contents = join '', <$outfh>;
+    eq_or_diff( $outfile_contents => $duplicate_report,
+        "duplicate report in specified outfile" );
+
+    close $outfh;
 }
 
 
