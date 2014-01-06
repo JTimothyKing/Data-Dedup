@@ -10,6 +10,9 @@ __PACKAGE__->runtests;
 
 use Test::MockObject 1.20120301;
 
+# core modules
+use Carp ();
+
 BEGIN {
 
 { # Load module under test, and bail out if it dies.
@@ -103,6 +106,108 @@ END_DUPLICATE_REPORT
 
     eq_or_diff($self->{output} => $duplicate_report,
         "produces expected output");
+}
+
+
+sub _setup_for_warnings_test {
+    my $self = shift;
+    my ($dedup, $cli) = @$self{qw(dedup cli)};
+
+    my $plain_warning = "Plain warning";
+    my $sourceloc_warning = "Source loc warning";
+    my $carp_warning = "Carp warning";
+    my $cluck_warning = "Cluck warning";
+    $dedup->mock(scan => sub {
+        warn "$plain_warning\n";
+        warn "$sourceloc_warning"; # line 122 (see below)
+        Carp::carp("$carp_warning\n");
+        Carp::cluck($cluck_warning); # line 124 (see below)
+    });
+
+    my $sourceloc_warning_loc = ' at ' . __FILE__ . ' line 122.';
+    my $cluck_warning_loc = ' at ' . __FILE__ . ' line 124.';
+
+    $dedup->mock(duplicates => sub { [] });
+
+    return ($plain_warning, $sourceloc_warning, $carp_warning, $cluck_warning,
+            $sourceloc_warning_loc, $cluck_warning_loc);
+}
+
+sub dedup_files_cli__normal_warnings : Test(2) {
+    my $self = shift;
+    my ($dedup, $cli) = @$self{qw(dedup cli)};
+
+    my ($plain_warning, $sourceloc_warning, $carp_warning, $cluck_warning)
+        = $self->_setup_for_warnings_test;
+
+    local @ARGV = qw(--format=robot --dir=foo);
+
+    # Unfortunately, we can't use Test::Warn here, because it f*cks with
+    # the actual warning text sent upstream, trying to be too clever by half.
+    # (See Test::Warn::_canonical_got_warning.)
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+
+    lives_and { cmp_ok($cli->run(), '>=', 0) }
+        "returns success code";
+
+    cmp_deeply( \@warnings => [
+        map "$_\n",
+            $plain_warning,
+            $sourceloc_warning,
+            $carp_warning,
+            $cluck_warning
+    ], "warnings normally displayed to the user");
+}
+
+sub dedup_files_cli__quiet_warnings : Test(2) {
+    my $self = shift;
+    my ($dedup, $cli) = @$self{qw(dedup cli)};
+
+    $self->_setup_for_warnings_test;
+
+    local @ARGV = qw(--format=robot --quiet --dir=foo);
+
+    # Unfortunately, we can't use Test::Warn here, because it f*cks with
+    # the actual warning text sent upstream, trying to be too clever by half.
+    # (See Test::Warn::_canonical_got_warning.)
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+
+    lives_and { cmp_ok($cli->run(), '>=', 0) }
+        "returns success code";
+
+    cmp_deeply( \@warnings => [
+        # none
+    ], "warnings with --quiet switch");
+}
+
+sub dedup_files_cli__debug_warnings : Test(2) {
+    my $self = shift;
+    my ($dedup, $cli) = @$self{qw(dedup cli)};
+
+    my ($plain_warning, $sourceloc_warning, $carp_warning, $cluck_warning,
+        $sourceloc_warning_loc, $cluck_warning_loc)
+            = $self->_setup_for_warnings_test;
+
+    local @ARGV = qw(--format=robot --debug --dir=foo);
+
+    # Unfortunately, we can't use Test::Warn here, because it f*cks with
+    # the actual warning text sent upstream, trying to be too clever by half.
+    # (See Test::Warn::_canonical_got_warning.)
+    my @warnings;
+    local $SIG{__WARN__} = sub { push @warnings, $_[0] };
+
+    lives_and { cmp_ok($cli->run(), '>=', 0) }
+        "returns success code";
+
+    my $carp_loc = qr[ at \S*?/Test/MockObject.pm line \d+.];
+    cmp_deeply( \@warnings, [
+        re(qr[^\Q$plain_warning\E\n$]),
+        re(qr[^\Q$sourceloc_warning$sourceloc_warning_loc\E\n$]),
+        re(qr[^\Q$carp_warning\E\n$carp_loc\n$]),
+        re(qr[^\Q$cluck_warning$cluck_warning_loc\E\n\s+.*?called at]),
+    ], "warnings with --debug switch");
 }
 
 

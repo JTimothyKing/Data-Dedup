@@ -19,6 +19,8 @@ Data::Dedup::Files::CLI - A command-line interface to deduplicate files.
 my %options = (
     'dir|d=s@' => 'directory under which to scan',
     'quiet|q' => 'suppress all messages',
+    'verbose|v+' => 'display extra messages',
+    'debug' => 'include information only interesting to developers',
     'format|f=s' => 'specify format of output: robot, text',
 );
 
@@ -32,13 +34,38 @@ class Data::Dedup::Files::CLI {
 
     method BUILD($args) {
         $!CLI = CLI::Startup->new({
+            usage => '--dir /path/to/scan [options...]',
             options => \%options,
         });
+    }
+
+    # Removes " at FILE line ##" and everything after it.
+    # This message may appear on the same line as a warning message,
+    # or it may appear on a line by itself (e.g., with Carp).
+    sub _remove_source_loc {
+        my ($msg) = @_;
+        return @_ if ref $msg;
+        my @lines;
+        for my $line ($msg =~ m/^.*$/gm) {
+            if ($line =~ s/ at .+? line \d+.*$//) {
+                push @lines, $line if $line;
+                last;
+            } else {
+                push @lines, $line;
+            }
+        }
+        return map "$_\n", @lines;
     }
 
     method run {
         $!CLI->init;
         my $opts = $!CLI->get_options;
+
+        my $syswarn = $SIG{__WARN__} || sub { warn @_ };
+        local $SIG{__WARN__}
+            = $opts->{quiet} ? sub { } # quiet = suppress all
+            : $opts->{debug} ? sub { $syswarn->(@_) } # debug = let all through
+            : sub { $syswarn->(_remove_source_loc @_) };
 
         $!dedup->scan( dir => $_ ) for @{$opts->{dir}};
 
