@@ -57,7 +57,7 @@ sub _create_files {
 
 sub generate_test_dir : Test(setup) {
     my $self = shift;
-    $self->{test_dir} = tempdir();
+    $self->{test_dir} = tempdir( CLEANUP => 1 );
 }
 
 sub cleanup_test_dir : Test(teardown) {
