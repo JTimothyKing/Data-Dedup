@@ -5,8 +5,9 @@ use warnings;
 use mop 0.02;
 use signatures 0.07;
 
-use Data::Dedup::Engine::BlockingFactory;
 use Digest::SHA 5.82;
+
+use Data::Dedup::Engine::BlockingFactory;
 
 # core modules
 use List::Util 'min', 'max';
