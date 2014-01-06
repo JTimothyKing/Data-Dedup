@@ -2,7 +2,7 @@ package Data::Dedup::Engine::BlockingFactory::_guts;
 use 5.016;
 use strict;
 use warnings;
-use mop 0.02;
+use mop 0.03;
 use signatures 0.07;
 
 

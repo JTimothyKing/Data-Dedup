@@ -28,7 +28,7 @@ sub fail_if_returned_early { 1 }
 
 
 package t::unit::Data::Dedup::Engine::_mock_blocking_factory {
-    use mop 0.02;
+    use mop 0.03;
     class t::unit::Data::Dedup::Engine::_mock_blocking_factory
         with Data::Dedup::Engine::BlockingFactory {
         has $!all_functions_returns;
