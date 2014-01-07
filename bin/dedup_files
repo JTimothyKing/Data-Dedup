@@ -5,6 +5,8 @@ use warnings;
 
 use Data::Dedup::Files::CLI;
 
+*::VERSION = *Data::Dedup::Files::CLI::VERSION;
+
 exit Data::Dedup::Files::CLI->new->run;
 
 __END__
