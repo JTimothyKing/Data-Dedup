@@ -11,6 +11,8 @@ use Try::Tiny 0.18;
 use Data::Dedup::Files;
 
 # core modules
+use IO::Handle ();
+use List::Util 'sum';
 use Scalar::Util 'refaddr';
 
 
@@ -93,9 +95,15 @@ class Data::Dedup::Files::CLI {
         });
     }
 
+    # progress accumulators
     has $!files_count = 0;
     has $!file_bytes_count = 0;
     has $!files_unreadable_count = 0;
+    has $!file_unreadable_bytes_count = 0;
+
+    # state of the progress display
+    has $!next_min_files_to_print = 0;
+    has $!progress_message_length = 0;
 
     method _update_progress_sub($display_progress) {
         return sub {
@@ -104,56 +112,116 @@ class Data::Dedup::Files::CLI {
             my $filesize = (@_ % 2) && shift // 0;
             my (%args) = @_;
 
-            state $next_min_files_to_print = 0;
-
             $!files_count++;
             $!file_bytes_count += $filesize;
-            $!files_unreadable_count++ if $args{ignored_unreadable};
+            if ($args{ignored_unreadable}) {
+                $!files_unreadable_count++;
+                $!file_unreadable_bytes_count += $filesize;
+            }
 
-            if ($!files_count >= $next_min_files_to_print || $args{force_display}) {
+            return unless $display_progress; # All the stuff below is just for display.
+
+            if ($!files_count >= $!next_min_files_to_print || $args{force_display}) {
                 my $human_readable_bytes = human_readable_bytes($!file_bytes_count);
-                print $!stderr ("\rscanned $!files_count files, $human_readable_bytes")
-                    if $display_progress;
+                my $progress_message = "scanned $!files_count files, $human_readable_bytes";
 
-                print $!stderr ((' ' x 12), ("\b" x 12)) if $display_progress;
-                $next_min_files_to_print
+                my $new_msg_length = length $progress_message;
+                my $msg_overflow_chars = $!progress_message_length - $new_msg_length;
+                $msg_overflow_chars = 0 if $msg_overflow_chars < 0;
+                $!progress_message_length = $new_msg_length;
+
+                print $!stderr ("\r$progress_message", (' ' x $msg_overflow_chars));
+
+                $!next_min_files_to_print
                     = (int($!files_count / $granularity) + 1) * $granularity;
             }
         };
     }
 
+    method _clear_progress_display {
+        print $!stderr ("\r", (' ' x $!progress_message_length), "\r");
+        $!next_min_files_to_print = 0; # Re-display ASAP
+    }
+
+    method _scan_dirs($opts) {
+        my $display_progress = $opts->{progress};
+
+        try {
+            my $update_progress = $self->_update_progress_sub($display_progress);
+
+            my $syswarn = $SIG{__WARN__} || sub { warn @_ }; # original "warn"
+            local $SIG{__WARN__}
+                = $display_progress ? sub {
+                    # in case $!stderr and warnings appear on the same terminal
+                    $self->_clear_progress_display;
+                    $syswarn->(@_);
+                }
+                : $SIG{__WARN__}; # nothing special if not $display_progress
+
+            for my $dir (@{$opts->{dir}}) {
+                if ($opts->{verbose}) {
+                    # in case $!stderr and $!stdout are displaying on the same terminal
+                    $self->_clear_progress_display if $display_progress;
+                    $!stdout->printflush("Scanning $dir...\n");
+                }
+
+                $!dedup->scan(
+                    dir => $dir,
+                    progress => $update_progress,
+                );
+            }
+
+            # display final update
+            if ($display_progress) {
+                $update_progress->(force_display => 1);
+                print $!stderr ("\n");
+            }
+
+        } catch {
+            print $!stderr ("\n") if $display_progress;
+            die $_;
+        };
+    }
+
+    method _display_statistics(%stats) {
+        my $human_file_bytes = human_readable_bytes($!file_bytes_count);
+        my $human_file_unreadable_bytes = human_readable_bytes($!file_unreadable_bytes_count);
+
+        print $!stdout (
+            "$!files_count files scanned, $human_file_bytes\n",
+            "($!files_unreadable_count were unreadable and ignored, $human_file_unreadable_bytes)\n"
+                x!! $!files_unreadable_count,
+            "\nFound:\n",
+            '  ', $stats{unique}, " unique files\n",
+            '+ ', $stats{distinct}, " distinct files with duplicates, and\n",
+            '+ ', $stats{duplicate}, " dupliciates of those\n",
+            '= ', (sum @stats{qw(unique distinct duplicate)}), " total files deduped\n",
+        );
+    }
+
+
     method run {
         $!CLI->init;
         my $opts = $!CLI->get_options;
 
+        my $quiet = $opts->{quiet};
+        my $verbose = $opts->{verbose};
+        my $debug = $opts->{debug};
+
         my $syswarn = $SIG{__WARN__} || sub { warn @_ }; # original "warn"
         local $SIG{__WARN__}
-            = $opts->{quiet} ? sub { } # quiet = suppress all
-            : $opts->{debug} ? sub { $syswarn->(@_) } # debug = let all through
+            = $quiet ? sub { } # quiet = suppress all
+            : $debug ? sub { $syswarn->(@_) } # debug = let all through
             : sub { $syswarn->(_remove_source_loc @_) };
 
-        try {
-            my $update_progress = $self->_update_progress_sub($opts->{progress});
-
-            $!dedup->scan(
-                dir => $_,
-                progress => $update_progress,
-            ) for @{$opts->{dir}};
-
-            # display final update
-            $update_progress->(force_display => 1) if ($opts->{progress});
-            print $!stderr ("\n") if ($opts->{progress});
-
-        } catch {
-            print $!stderr ("\n") if ($opts->{progress});
-            die $_;
-        };
+        $self->_scan_dirs($opts);
 
         my $file_list = $!dedup->duplicates(
             resolve_hardlinks => sub { ( sort { $a cmp $b } @{$_[0]} )[0] },
         );
 
         my $outfile = $opts->{outfile};
+        $outfile = undef if $outfile eq '-';
         my $outfh = do {
             if ($outfile) {
                 open my $outfh, '>', $outfile
@@ -164,13 +232,38 @@ class Data::Dedup::Files::CLI {
             }
         };
 
+        my $is_report_on_stdout = !$outfile;
+        my @separator = ( '-' x 30, "\n" )x!! ($verbose && $is_report_on_stdout);
+
+        print $!stdout (@separator) if @separator;
+
         print $outfh
             sort { $a cmp $b }
             map {
                 (join "\t", sort { $a cmp $b } @$_) . "\n"
             } grep { @$_ > 1 } @$file_list;
 
+        print $!stdout (@separator) if @separator;
+
         close $outfh if $outfile; # mirrors "if ($outfile) { open $outfh ..." above
+
+        if ($verbose) {
+            my ($unique, $distinct, $duplicate) = (0) x 3;
+            for my $files (@$file_list) {
+                if (@$files == 1) {
+                    $unique++;
+                } elsif (@$files > 1) {
+                    $distinct++;
+                    $duplicate += @$files - 1;
+                }
+            }
+
+            $self->_display_statistics(
+                unique => $unique,
+                distinct => $distinct,
+                duplicate => $duplicate,
+            );
+        }
 
         return 0;
     }

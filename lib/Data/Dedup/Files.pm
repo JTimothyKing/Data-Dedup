@@ -115,9 +115,9 @@ class Data::Dedup::Files {
     }
 
 
-    method hardlinks {
-        [ values %{$!inodes_seen} ];
-    }
+    method hardlinks { [ values %{$!inodes_seen} ] }
+
+    method blocks { $!engine->blocks }
 }
 
 
