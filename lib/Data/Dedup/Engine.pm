@@ -157,6 +157,11 @@ object by calling the accessor method named after it:
         return $meta->does_role('Data::Dedup::Engine::BlockingFactory');
     }
 
+    sub _object_isa($obj, $class) {
+        Scalar::Util::blessed $obj && $obj->isa($class)
+    }
+
+
     method BUILD {
         $!blocking //= [];
         $!blocking = [ $!blocking ] unless _is_array($!blocking);
@@ -325,12 +330,14 @@ $block->objects->[$idx] >>. (See L<objects>.)
 
 
     class Data::Dedup::Engine::BlockKeyStore {
-        has $!_keyhash = {};
+        has $!_keyhash is ro = {};
 
         method set($key, $content) { $!_keyhash->{$key} = $content }
 
         # Returns a reference to the key slot within the key store
         method get_ref($key) { \($!_keyhash->{$key}) }
+
+        method slots { [ values %{$!_keyhash} ] }
     }
 
     has $!_blocks_by_key; # may contain a BlockKeyStore or Block
@@ -355,9 +362,7 @@ $block->objects->[$idx] >>. (See L<objects>.)
     sub _block($object, $blockingsubs, $rblockslot, $keys) {
         $keys //= [];
 
-        my $blockslot_isa = sub ($class) {
-            Scalar::Util::blessed($$rblockslot) && $$rblockslot->isa($class)
-        };
+        my $blockslot_isa = sub ($class) { _object_isa($$rblockslot, $class) };
 
         if (@$blockingsubs) {
             my ($blockingsub, @other_blocking_subs) = @$blockingsubs;
@@ -440,6 +445,37 @@ copy, rather than the original.
 =cut
 
     method blocks { $!_blocks }
+
+
+    # returns ( [ collision_counts ], total_distinctive_blocks )
+    sub _count_keystore_collisions($keystore) {
+        my $collisions = 0;
+        my @sub_collisions;
+        my $total_blocks = 0;
+        SLOT: for my $slot (@{$keystore->slots}) {
+            if (_object_isa($slot, 'Data::Dedup::Engine::Block')) {
+                $total_blocks++;
+            }
+
+            next SLOT unless _object_isa($slot, 'Data::Dedup::Engine::BlockKeyStore');
+
+            my ($slot_collisions, $slot_blocks) = _count_keystore_collisions($slot);
+            @sub_collisions = List::MoreUtils::pairwise
+                { ($a // 0) + ($b // 0) } @sub_collisions, @$slot_collisions;
+
+            $collisions += $slot_blocks > 1 ? $slot_blocks - 1 : 0;
+            $total_blocks += $slot_blocks;
+        }
+
+        return( [ $collisions, @sub_collisions ], $total_blocks );
+    }
+
+    method count_collisions {
+        return []  # no collisions even defined for non-keystore levels of the structure
+            unless _object_isa($!_blocks_by_key, 'Data::Dedup::Engine::BlockKeyStore');
+
+        return ( _count_keystore_collisions( $!_blocks_by_key ) )[0];
+    }
 
 =back
 

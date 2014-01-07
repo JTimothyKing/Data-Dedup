@@ -232,6 +232,45 @@ sub dedup_engine__invalid_blocking : Test(3) {
 }
 
 
+sub dedup_engine__count_collisions : Test(3) {
+    my $engine = Data::Dedup::Engine->new(
+        blocking => [
+            sub { $_[0][0] },
+            sub { $_[0][1] % 2 },
+            sub { $_[0][1] % 3 },
+            sub { $_[0][1] % 5 },
+        ],
+    );
+    ok($engine, "instantiate Data::Dedup::Engine with multiple blocking subs");
+
+    $engine->add([ A =>  1 ], [ B =>  2 ], [ C =>  3 ],
+                 [ A =>  4 ], [ B =>  5 ], [ C =>  6 ],
+                 [ A =>  7 ], [ B =>  8 ], [ C =>  9 ]);
+
+    my $blocks = $engine->blocks;
+    cmp_deeply(
+        $blocks => bag(
+            _block(A111=>'A1'),
+            _block(A0  =>'A4'),
+            _block(A112=>'A7'),
+            _block(B022=>'B2'),
+            _block(B1  =>'B5'),
+            _block(B023=>'B8'),
+            _block(C103=>'C3'),
+            _block(C0  =>'C6'),
+            _block(C104=>'C9'),
+        ),
+        "multi-blocked blocks"
+    ) or diag( _dump_blocks($blocks) );
+
+    my $num_collisions = $engine->count_collisions;
+    cmp_deeply(
+        $num_collisions => [ 6, 3, 3, 0 ],
+        "number of collisions counted at each blocking level"
+    ) or diag( Data::Dumper->Dump([$num_collisions], ['num_collisions']) );
+}
+
+
 }
 
 1;
