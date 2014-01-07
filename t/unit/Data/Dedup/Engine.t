@@ -267,7 +267,7 @@ sub dedup_engine__count_collisions : Test(3) {
     cmp_deeply(
         $num_collisions => [ 6, 3, 3, 0 ],
         "number of collisions counted at each blocking level"
-    );
+    ) or diag( Data::Dumper->Dump([$num_collisions], ['num_collisions']) );
 }
 
 
