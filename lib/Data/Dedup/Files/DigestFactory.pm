@@ -5,7 +5,8 @@ use warnings;
 use mop 0.03;
 use signatures 0.07;
 
-use Digest::SHA 5.82;
+use Digest::SHA 5.82 ();
+use Digest::xxHash 1.01 ();
 
 use Data::Dedup::Engine::BlockingFactory;
 use Data::Dedup::Engine::BlockingFunction;
@@ -93,6 +94,18 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
             my $mid_cluster_offset = int( ($size/2 - 1) / $cluster_size ) * $cluster_size;
             my $offset = max 0, ($mid_cluster_offset + $cluster_size/2 - 128);
             return _retrieve_sample($file, $offset, 128);
+        },
+    );
+
+
+    has $!from_initial_xxhash is ro = Data::Dedup::Engine::BlockingFunction->new(
+        class => __CLASS__,
+        id => 'initial_xxhash',
+        name => 'first-cluster xxHash',
+        impl => sub ($file) {
+            my ($size,$blksize) = (lstat $file)[7,11];
+            my $cluster_size = min $size, ($blksize || 4096);
+            Digest::xxHash::xxhash( _retrieve_sample($file, 0, $cluster_size), 0 );
         },
     );
 
