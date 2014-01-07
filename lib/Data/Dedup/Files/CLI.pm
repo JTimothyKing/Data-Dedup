@@ -150,8 +150,8 @@ class Data::Dedup::Files::CLI {
             my $update_progress = $self->_update_progress_sub($display_progress);
 
             my $syswarn = $SIG{__WARN__} || sub { warn @_ }; # original "warn"
-            local $SIG{__WARN__}
-                = $display_progress ? sub {
+            local $SIG{__WARN__} # $opts->{quiet} in the following line is a HACK
+                = ($display_progress && !$opts->{quiet}) ? sub {
                     # in case $!stderr and warnings appear on the same terminal
                     $self->_clear_progress_display;
                     $syswarn->(@_);
