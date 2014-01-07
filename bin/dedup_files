@@ -19,6 +19,7 @@ dedup_files --dir /path/to/scan [options...]
 
 =head1 OPTIONS
 
+    --alg, -a      digest algorithm(s) to use (can be specified multiple times)
     --debug        include information only interesting to developers
     --dir, -d      directory under which to scan (can be specified multiple times)
     --help         Print a help summary
