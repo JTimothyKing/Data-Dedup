@@ -57,6 +57,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, ($blksize || 4096);
+            return '' unless $cluster_size > 0;
             my $offset = max 0, ($cluster_size/2 - 128);
             return _retrieve_sample($file, $offset, 128);
         },
@@ -69,6 +70,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, ($blksize || 4096);
+            return '' unless $cluster_size > 0;
             my $last_cluster_offset = int( ($size-1) / $cluster_size ) * $cluster_size;
             my $last_cluster_size = $size - $last_cluster_offset;
             if ($last_cluster_size < 128) {
@@ -87,6 +89,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, ($blksize || 4096);
+            return '' unless $cluster_size > 0;
             my $mid_cluster_offset = int( ($size/2 - 1) / $cluster_size ) * $cluster_size;
             my $offset = max 0, ($mid_cluster_offset + $cluster_size/2 - 128);
             return _retrieve_sample($file, $offset, 128);
