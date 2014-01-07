@@ -28,9 +28,9 @@ Data::Dedup::Files::DigestFactory - Generate file-digest blocking functions for 
 class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactory {
     method all_functions {
         return [
-            $self->from_filesize,   # first blocking key: filesize
-            $self->from_sample,     # second blocking key: data sample from first cluster
-            $self->from_sha,        # third blocking key: SHA-1
+            $self->from_filesize,       # first blocking key: filesize
+            $self->from_initial_sha,    # second blocking key: first-cluster SHA-1
+            $self->from_sha,            # third blocking key: SHA-1
         ];
     }
 
