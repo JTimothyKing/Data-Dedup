@@ -221,13 +221,25 @@ class Data::Dedup::Files::CLI {
             '= ', (sum @stats{qw(unique distinct duplicate)}), " total files deduped\n",
         );
 
-        my $max_digest_length = max map { length $_ } @{$stats{digests}};
-        my $max_collisions_length = max map { length $_ } @{$stats{collisions}};
+        my $digests = $stats{digests};
+        my $num_digests = $stats{num_digests};
+        my $collisions = $stats{collisions};
+
+        my $max_digest_length = max map { length $_ } @$digests;
+        my $file_count_length = length $!files_count;
         print $!stdout (
-            "\nDigest collisions at each blocking level:\n",
-            ( pairwise { sprintf('  %-*s : %*d'."\n",
-                $max_digest_length, $a, $max_collisions_length, $b) }
-                @{$stats{digests}}, @{$stats{collisions}} ),
+            "\nAt each blocking level:\n",
+            sprintf('  %-*s : %*s %*s'."\n",
+                    $max_digest_length, 'Digest',
+                    $file_count_length, '# ',
+                    $file_count_length, 'coll'),
+
+            ( map {
+                sprintf('  %-*s : %*d %*d'."\n",
+                        $max_digest_length, $digests->[$_],
+                        $file_count_length, $num_digests->[$_],
+                        $file_count_length, $collisions->[$_])
+            } 0 .. $#{$digests} ),
         );
     }
 
@@ -309,6 +321,7 @@ class Data::Dedup::Files::CLI {
                 distinct => $distinct,
                 duplicate => $duplicate,
                 digests => [ map { $_->name } @{$!dedup->blocking} ],
+                num_digests => $!dedup->count_digests,
                 collisions => $!dedup->count_collisions,
             );
         }

@@ -114,6 +114,7 @@ class Data::Dedup::Files {
     method hardlinks { [ values %{$!inodes_seen} ] }
 
     method count_collisions { $!engine->count_collisions }
+    method count_digests { $!engine->count_keys_computed }
 }
 
 

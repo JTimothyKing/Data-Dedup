@@ -477,6 +477,18 @@ copy, rather than the original.
         return ( _count_keystore_collisions( $!_blocks_by_key ) )[0];
     }
 
+
+    method count_keys_computed {
+        my @num_keys;
+        for my $block (@{$!_blocks}) {
+            my $num_objects = $block->num_objects;
+            @num_keys = List::MoreUtils::pairwise
+                { ($a // 0) + (defined($b) ? $num_objects : 0) }
+                @num_keys, @{$block->keys};
+        }
+        return \@num_keys;
+    }
+
 =back
 
 =cut
