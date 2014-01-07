@@ -24,7 +24,7 @@ Data::Dedup::Files::CLI - A command-line interface to deduplicate files.
 
 
 my %options = (
-    'dir|d=s@' => 'directory under which to scan',
+    'dir|d=s@' => 'directory under which to scan (can be specified multiple times)',
     'quiet|q' => 'suppress all messages',
     'verbose|v+' => 'display extra messages',
     'debug' => 'include information only interesting to developers',
@@ -158,11 +158,17 @@ class Data::Dedup::Files::CLI {
                 }
                 : $SIG{__WARN__}; # nothing special if not $display_progress
 
-            for my $dir (@{$opts->{dir}}) {
+            my %seen_dir;
+            DIR: for my $dir (@{$opts->{dir}}) {
+                if ($seen_dir{$dir}++) {
+                    warn "Skipping repeated instance of $dir\n";
+                    next DIR;
+                }
+
                 if ($opts->{verbose}) {
                     # in case $!stderr and $!stdout are displaying on the same terminal
                     $self->_clear_progress_display if $display_progress;
-                    $!stdout->printflush("Scanning $dir...\n");
+                    $!stdout->printflush("Scanning $dir\n");
                 }
 
                 $!dedup->scan(
@@ -203,10 +209,13 @@ class Data::Dedup::Files::CLI {
     method run {
         $!CLI->init;
         my $opts = $!CLI->get_options;
+        $!CLI->die_usage if (@ARGV);
 
         my $quiet = $opts->{quiet};
         my $verbose = $opts->{verbose};
         my $debug = $opts->{debug};
+
+        $quiet = undef if $verbose || $debug;
 
         my $syswarn = $SIG{__WARN__} || sub { warn @_ }; # original "warn"
         local $SIG{__WARN__}
@@ -221,7 +230,7 @@ class Data::Dedup::Files::CLI {
         );
 
         my $outfile = $opts->{outfile};
-        $outfile = undef if $outfile eq '-';
+        $outfile = undef if $outfile && $outfile eq '-';
         my $outfh = do {
             if ($outfile) {
                 open my $outfh, '>', $outfile
