@@ -98,6 +98,17 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
     );
 
 
+    has $!from_fast_initial_xxhash is ro = Data::Dedup::Engine::BlockingFunction->new(
+        class => __CLASS__,
+        id => 'fast_initial_xxhash',
+        name => 'first-half-cluster xxHash',
+        impl => sub ($file) {
+            my ($size,$blksize) = (lstat $file)[7,11];
+            my $cluster_size = min $size, (($blksize || 4096) / 2);
+            Digest::xxHash::xxhash( _retrieve_sample($file, 0, $cluster_size), 0 );
+        },
+    );
+
     has $!from_initial_xxhash is ro = Data::Dedup::Engine::BlockingFunction->new(
         class => __CLASS__,
         id => 'initial_xxhash',
@@ -109,6 +120,19 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         },
     );
 
+
+    has $!from_fast_initial_sha is ro = Data::Dedup::Engine::BlockingFunction->new(
+        class => __CLASS__,
+        id => 'fast_initial_sha',
+        name => 'first-half-cluster SHA-1',
+        impl => sub ($file) {
+            my ($size,$blksize) = (lstat $file)[7,11];
+            my $cluster_size = min $size, (($blksize || 4096) / 2);
+            Digest::SHA->new(1)
+                ->add( _retrieve_sample($file, 0, $cluster_size) )
+                ->digest;
+        },
+    );
 
     has $!from_initial_sha is ro = Data::Dedup::Engine::BlockingFunction->new(
         class => __CLASS__,
@@ -122,7 +146,6 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
                 ->digest;
         },
     );
-
 
     has $!from_sha is ro = Data::Dedup::Engine::BlockingFunction->new(
         class => __CLASS__,
