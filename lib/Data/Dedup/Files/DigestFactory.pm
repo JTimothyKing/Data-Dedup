@@ -29,7 +29,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
     method all_functions {
         return [
             $self->from_filesize,       # first blocking key: filesize
-            $self->from_initial_sha,    # second blocking key: first-cluster SHA-1
+            $self->from_initial_xxhash, # second blocking key: first-cluster xxHash
             $self->from_sha,            # third blocking key: SHA-1
         ];
     }
