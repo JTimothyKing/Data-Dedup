@@ -226,7 +226,7 @@ class Data::Dedup::Files::CLI {
         my $collisions = $stats{collisions};
 
         my $max_digest_length = max map { length $_ } @$digests;
-        my $file_count_length = length $!files_count;
+        my $file_count_length = max 4, length $!files_count;
         print $!stdout (
             "\nAt each blocking level:\n",
             sprintf('  %-*s : %*s %*s'."\n",
@@ -247,7 +247,8 @@ class Data::Dedup::Files::CLI {
     method run {
         $!CLI->init;
         my $opts = $!CLI->get_options;
-        $!CLI->die_usage if (@ARGV);
+
+        $!CLI->die_usage if @ARGV || !$opts->{dir} || !@{$opts->{dir}};
 
         my $quiet = $opts->{quiet};
         my $verbose = $opts->{verbose};
