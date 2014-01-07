@@ -15,10 +15,30 @@ dedup_files
 
 =head1 SYNOPSIS
 
-dedup_files [options]
+dedup_files --dir /path/to/scan [options...]
+
+=head1 OPTIONS
+
+    --debug        include information only interesting to developers
+    --dir, -d      directory under which to scan (can be specified multiple times)
+    --help         Print a help summary
+    --manpage      Print this manpage for this script
+    --outfile, -o  write duplicate report to a named file instead of standard out
+    --progress, -P display progress messages on standard error
+    --quiet, -q    suppress all messages
+    --rcfile       Config file to load
+    --verbose, -v  display extra messages
+    --version      Print version information and exit
+    --write-rcfile Write current options to rcfile
 
 =head1 DESCRIPTION
 
+This program scans one or more directory trees and identifies files that contain
+duplicate contents.
+
+The filenames are reported by default on standard out, or written to a file (if
+the --outfile option is given). Each distinct file is reported on its own line,
+with duplicates listed afterward, separated by tabs.
 
 =head1 AUTHOR
 

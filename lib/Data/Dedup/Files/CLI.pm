@@ -28,7 +28,7 @@ my %options = (
     'quiet|q' => 'suppress all messages',
     'verbose|v+' => 'display extra messages',
     'debug' => 'include information only interesting to developers',
-    'format|f=s' => 'specify format of output: robot, text',
+#    'format|f=s' => 'specify format of output: robot, text',
     'outfile|o=s' => 'write duplicate report to a file instead of standard out',
     'progress|P' => 'displays progress messages on standard error',
 );

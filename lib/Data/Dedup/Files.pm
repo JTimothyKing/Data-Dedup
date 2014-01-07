@@ -40,10 +40,6 @@ Or...
 
     my $file_list = $dedup->duplicates;
 
-=head1 DESCRIPTION
-
-This module 
-
 =cut
 
 
