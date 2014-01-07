@@ -44,18 +44,18 @@ Or...
 
 
 class Data::Dedup::Files {
-    has $!blocking is ro;
-
     has $!dir is rw;
     has $!ignore_empty is rw;
     has $!progress is rw;
 
     has $!engine;
 
-    method BUILD {
-        $!blocking //= Data::Dedup::Files::DigestFactory->new;
-        $!engine = Data::Dedup::Engine->new( blocking => $!blocking );
+    method BUILD($args) {
+        my $blocking = $args->{blocking} // Data::Dedup::Files::DigestFactory->new;
+        $!engine = Data::Dedup::Engine->new( blocking => $blocking );
     }
+
+    method blocking { $!engine->blocking }
 
     has $!inodes_seen = {};
 
@@ -113,7 +113,7 @@ class Data::Dedup::Files {
 
     method hardlinks { [ values %{$!inodes_seen} ] }
 
-    method blocks { $!engine->blocks }
+    method count_collisions { $!engine->count_collisions }
 }
 
 

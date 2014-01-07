@@ -6,13 +6,14 @@ use mop 0.03;
 use signatures 0.07;
 
 use CLI::Startup 0.08;
+use List::MoreUtils 0.33 'pairwise';
 use Try::Tiny 0.18;
 
 use Data::Dedup::Files;
 
 # core modules
 use IO::Handle ();
-use List::Util 'sum';
+use List::Util 'sum', 'max';
 use Scalar::Util 'refaddr';
 
 
@@ -24,13 +25,14 @@ Data::Dedup::Files::CLI - A command-line interface to deduplicate files.
 
 
 my %options = (
-    'dir|d=s@' => 'directory under which to scan (can be specified multiple times)',
-    'quiet|q' => 'suppress all messages',
-    'verbose|v+' => 'display extra messages',
+    'alg|a=s@' => 'digest algorithm(s) to use (can be specified multiple times)',
     'debug' => 'include information only interesting to developers',
+    'dir|d=s@' => 'directory under which to scan (can be specified multiple times)',
     'format|f=s' => 'specify format of output: (only the default, "robot," currently supported)',
     'outfile|o=s' => 'write duplicate report to a file instead of standard out',
     'progress|P' => 'displays progress messages on standard error',
+    'quiet|q' => 'suppress all messages',
+    'verbose|v+' => 'display extra messages',
 );
 
 
@@ -81,9 +83,21 @@ sub _remove_source_loc {
 }
 
 
+sub _algs_to_blocking($algs) {
+    my $digest_factory = Data::Dedup::Files::DigestFactory->new;
+    my @blocking;
+    for my $alg (@$algs) {
+        my $alg_method = 'from_' . $alg;
+        push @blocking, $digest_factory->$alg_method();
+    }
+    return \@blocking;
+}
+
+
 class Data::Dedup::Files::CLI {
     has $!CLI;
-    has $!dedup = Data::Dedup::Files->new;
+
+    has $!dedup; # mockable for unit testing
 
     has $!stdout is rw = *STDOUT;
     has $!stderr is rw = *STDERR;
@@ -197,11 +211,23 @@ class Data::Dedup::Files::CLI {
             "$!files_count files scanned, $human_file_bytes\n",
             "($!files_unreadable_count were unreadable and ignored, $human_file_unreadable_bytes)\n"
                 x!! $!files_unreadable_count,
+        );
+
+        print $!stdout (
             "\nFound:\n",
             '  ', $stats{unique}, " unique files\n",
             '+ ', $stats{distinct}, " distinct files with duplicates, and\n",
             '+ ', $stats{duplicate}, " dupliciates of those\n",
             '= ', (sum @stats{qw(unique distinct duplicate)}), " total files deduped\n",
+        );
+
+        my $max_digest_length = max map { length $_ } @{$stats{digests}};
+        my $max_collisions_length = max map { length $_ } @{$stats{collisions}};
+        print $!stdout (
+            "\nDigest collisions at each blocking level:\n",
+            ( pairwise { sprintf('  %-*s : %*d'."\n",
+                $max_digest_length, $a, $max_collisions_length, $b) }
+                @{$stats{digests}}, @{$stats{collisions}} ),
         );
     }
 
@@ -216,6 +242,17 @@ class Data::Dedup::Files::CLI {
         my $debug = $opts->{debug};
 
         $quiet = undef if $verbose || $debug;
+
+        $!dedup = Data::Dedup::Files->new(
+           ($opts->{alg} ? ( blocking => _algs_to_blocking($opts->{alg}) ) : () ),
+        ) unless $!dedup;
+
+        if ($verbose) {
+            my $blocking = $!dedup->blocking;
+            $!stdout->printflush(
+                "Using digest algorithms: ", (join ' ', map { $_->id } @$blocking), "\n",
+            );
+        }
 
         my $syswarn = $SIG{__WARN__} || sub { warn @_ }; # original "warn"
         local $SIG{__WARN__}
@@ -271,6 +308,8 @@ class Data::Dedup::Files::CLI {
                 unique => $unique,
                 distinct => $distinct,
                 duplicate => $duplicate,
+                digests => [ map { $_->name } @{$!dedup->blocking} ],
+                collisions => $!dedup->count_collisions,
             );
         }
 

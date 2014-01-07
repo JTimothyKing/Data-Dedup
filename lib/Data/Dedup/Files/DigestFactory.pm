@@ -8,6 +8,7 @@ use signatures 0.07;
 use Digest::SHA 5.82;
 
 use Data::Dedup::Engine::BlockingFactory;
+use Data::Dedup::Engine::BlockingFunction;
 
 # core modules
 use List::Util 'min', 'max';
@@ -32,30 +33,91 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         ];
     }
 
-    method from_filesize {
-        return sub ($file) { -s $file };
+    has $!from_filesize is ro = Data::Dedup::Engine::BlockingFunction->new(
+        class => __CLASS__,
+        id => 'filesize',
+        name => 'filesize',
+        impl => sub ($file) { -s $file },
+    );
+
+
+    sub _retrieve_sample($file, $offset, $size) {
+        my $data;
+        open my $fd, '<', $file or die "cannot read from $file";
+        seek $fd, $offset, 0;
+        read $fd, $data, $size;
+        close $fd;
+        return $data;
     }
 
-    method from_sample {
-        return sub ($file) {
+    has $!from_sample is ro = Data::Dedup::Engine::BlockingFunction->new(
+        class => __CLASS__,
+        id => 'sample',
+        name => 'first-cluster sample',
+        impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, ($blksize || 4096);
             my $offset = max 0, ($cluster_size/2 - 128);
-            open my $fd, '<', $file or die "cannot read from $file";
-            my $data;
-            read $fd, $data, 128, $offset;
-            close $fd;
-            return $data;
-        };
-    }
+            return _retrieve_sample($file, $offset, 128);
+        },
+    );
 
-    method from_sha {
-        return sub ($file) {
+    has $!from_end_sample is ro = Data::Dedup::Engine::BlockingFunction->new(
+        class => __CLASS__,
+        id => 'end_sample',
+        name => 'last-cluster sample',
+        impl => sub ($file) {
+            my ($size,$blksize) = (lstat $file)[7,11];
+            my $cluster_size = min $size, ($blksize || 4096);
+            my $last_cluster_offset = int( ($size-1) / $cluster_size ) * $cluster_size;
+            my $last_cluster_size = $size - $last_cluster_offset;
+            if ($last_cluster_size < 128) {
+                $last_cluster_offset -= $cluster_size;
+                $last_cluster_size = $cluster_size;
+            }
+            my $offset = max 0, ($last_cluster_offset + $last_cluster_size/2 - 128);
+            return _retrieve_sample($file, $offset, 128);
+        },
+    );
+
+    has $!from_mid_sample is ro = Data::Dedup::Engine::BlockingFunction->new(
+        class => __CLASS__,
+        id => 'mid_sample',
+        name => 'mid-file sample',
+        impl => sub ($file) {
+            my ($size,$blksize) = (lstat $file)[7,11];
+            my $cluster_size = min $size, ($blksize || 4096);
+            my $mid_cluster_offset = int( ($size/2 - 1) / $cluster_size ) * $cluster_size;
+            my $offset = max 0, ($mid_cluster_offset + $cluster_size/2 - 128);
+            return _retrieve_sample($file, $offset, 128);
+        },
+    );
+
+
+    has $!from_initial_sha is ro = Data::Dedup::Engine::BlockingFunction->new(
+        class => __CLASS__,
+        id => 'initial_sha',
+        name => 'first-cluster SHA-1',
+        impl => sub ($file) {
+            my ($size,$blksize) = (lstat $file)[7,11];
+            my $cluster_size = min $size, ($blksize || 4096);
+            Digest::SHA->new(1)
+                ->add( _retrieve_sample($file, 0, $cluster_size) )
+                ->digest;
+        },
+    );
+
+
+    has $!from_sha is ro = Data::Dedup::Engine::BlockingFunction->new(
+        class => __CLASS__,
+        id => 'sha',
+        name => 'SHA-1',
+        impl => sub ($file) {
             Digest::SHA->new(1)
                 ->addfile($file)
                 ->digest;
-        };
-    }
+        },
+    );
 }
 
 
