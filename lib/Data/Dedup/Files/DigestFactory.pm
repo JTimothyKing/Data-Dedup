@@ -135,7 +135,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, (($blksize || 4096) / 2);
-            Digest::xxHash::xxhash( _retrieve_sample($file, 0, $cluster_size), 0 );
+            return Digest::xxHash::xxhash( _retrieve_sample($file, 0, $cluster_size), 0 );
         },
     );
 
@@ -146,7 +146,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, ($blksize || 4096);
-            Digest::xxHash::xxhash( _retrieve_sample($file, 0, $cluster_size), 0 );
+            return Digest::xxHash::xxhash( _retrieve_sample($file, 0, $cluster_size), 0 );
         },
     );
 
@@ -157,16 +157,19 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, ($blksize || 4096);
+            return Digest::xxHash::xxhash('', 0) unless $cluster_size > 0;
             my $last_cluster_offset = int( ($size-1) / $cluster_size ) * $cluster_size;
             my $last_cluster_size = $size - $last_cluster_offset;
             if ($last_cluster_size < $cluster_size/2) {
                 $last_cluster_offset -= $cluster_size;
                 $last_cluster_size = $cluster_size;
             }
-            Digest::xxHash::xxhash( _retrieve_sample($file, $last_cluster_offset, $cluster_size), 0 );
+            return Digest::xxHash::xxhash( _retrieve_sample($file, $last_cluster_offset, $cluster_size), 0 );
         },
     );
 
+
+    sub _sha_data($data) { Digest::SHA->new(1)->add($data)->digest }
 
     has $!from_fast_initial_sha is ro = Data::Dedup::Engine::BlockingFunction->new(
         class => __CLASS__,
@@ -175,9 +178,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, (($blksize || 4096) / 2);
-            Digest::SHA->new(1)
-                ->add( _retrieve_sample($file, 0, $cluster_size) )
-                ->digest;
+            return _sha_data( _retrieve_sample($file, 0, $cluster_size) );
         },
     );
 
@@ -188,9 +189,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, ($blksize || 4096);
-            Digest::SHA->new(1)
-                ->add( _retrieve_sample($file, 0, $cluster_size) )
-                ->digest;
+            return _sha_data( _retrieve_sample($file, 0, $cluster_size) );
         },
     );
 
@@ -201,15 +200,14 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         impl => sub ($file) {
             my ($size,$blksize) = (lstat $file)[7,11];
             my $cluster_size = min $size, ($blksize || 4096);
+            return _sha_data('') unless $cluster_size > 0;
             my $last_cluster_offset = int( ($size-1) / $cluster_size ) * $cluster_size;
             my $last_cluster_size = $size - $last_cluster_offset;
             if ($last_cluster_size < $cluster_size/2) {
                 $last_cluster_offset -= $cluster_size;
                 $last_cluster_size = $cluster_size;
             }
-            Digest::SHA->new(1)
-                ->add( _retrieve_sample($file, $last_cluster_offset, $cluster_size) )
-                ->digest;
+            return _sha_data( _retrieve_sample($file, $last_cluster_offset, $cluster_size) );
         },
     );
 
