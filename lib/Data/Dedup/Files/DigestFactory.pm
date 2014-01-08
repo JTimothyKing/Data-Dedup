@@ -1,3 +1,5 @@
+package Data::Dedup::Files::DigestFactory; # for auto-placed symbols, like $VERSION
+
 package Data::Dedup::Files::DigestFactory::_guts;
 use 5.016;
 use strict;
@@ -44,7 +46,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
 
     sub _retrieve_sample($file, $offset, $size) {
         my $data;
-        open my $fd, '<', $file or die "cannot read from $file";
+        open my $fd, '<', $file or die "Can't open file '$file': $!";
         seek $fd, $offset, 0;
         read $fd, $data, $size;
         close $fd;

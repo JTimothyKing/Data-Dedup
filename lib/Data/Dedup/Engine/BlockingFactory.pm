@@ -1,3 +1,5 @@
+package Data::Dedup::Engine::BlockingFactory; # for auto-placed symbols, like $VERSION
+
 package Data::Dedup::Engine::BlockingFactory::_guts;
 use 5.016;
 use strict;

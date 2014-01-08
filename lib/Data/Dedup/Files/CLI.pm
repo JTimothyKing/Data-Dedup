@@ -1,3 +1,5 @@
+package Data::Dedup::Files::CLI; # for auto-placed symbols, like $VERSION
+
 package Data::Dedup::Files::CLI::_guts;
 use 5.016;
 use strict;

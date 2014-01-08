@@ -1,3 +1,5 @@
+package Data::Dedup::Engine; # for auto-placed symbols, like $VERSION
+
 package Data::Dedup::Engine::_guts;
 use 5.016;
 use strict;
@@ -447,6 +449,46 @@ copy, rather than the original.
     method blocks { $!_blocks }
 
 
+=item count_collisions
+
+Count number of key collisions at each blocking level.
+
+This method counts the number of observed key collisions for each blocking
+level, i.e., corresponding with each item of L<C<blocking>|blocking>.
+
+It returns an arrayref containing one element for each blocking level. The
+returned array might contain fewer elements than C<blocking>, if all
+deduplicated objects are unique, and if not all blocking algorithms were needed
+to discover this fact.
+
+A collision is defined as follows: If two distinct (non-duplicate) objects are
+reachable through the same key, that's one collision. Note that each block
+contains only duplicate objects, and each block is distinct from all other
+blocks; therefore, if two blocks are reachable through a single key, that
+represents a collision. Two blocks through one key, that's two collisions. But
+three blocks that are reachable through two keys represents only one collision,
+because each of the keys uniquely identify at least one block each, with only
+one block colliding. So in general, the number of collisions at a given blocking
+level is the number of blocks reachable through keys at that level minus the
+number of keys at that level.
+
+Objects are cumulatively blocked. That is, each successive blocking algorithm is
+used only to distinguish objects that the former algorithms failed to
+distinguish. So let's say a relatively strong algorithm, with few collisions, is
+followed by a relatively weak one, with many collisions. The latter blocking
+level will have no more observed collisions than the former, because the latter
+algorithm is only used to distinguish objects that the former couldn't
+distinguish.
+
+If all blocking algorithms identify two objects as duplicates of each other,
+only then will the engine consider the objects as duplicates. And if those two
+objects are in fact distinct--but no blocking level detected the difference--the
+engine will still consider them to be duplicates. Therefore, by definition, the
+last blocking level has 0 observed collisions (because even if a block on that
+level contains two distinct objects, there is no way to detect it).
+
+=cut
+
     # returns ( [ collision_counts ], total_distinctive_blocks )
     sub _count_keystore_collisions($keystore) {
         my $collisions = 0;
@@ -463,6 +505,11 @@ copy, rather than the original.
             @sub_collisions = List::MoreUtils::pairwise
                 { ($a // 0) + ($b // 0) } @sub_collisions, @$slot_collisions;
 
+            # A theoretical edge condition: If a key exists in the keystore but
+            # has no blocks reachable, it represents no collision, even though
+            # 0 blocks minus 1 key would produce the nonsensical answer of -1.
+            # In practice, this should not happen.
+
             $collisions += $slot_blocks > 1 ? $slot_blocks - 1 : 0;
             $total_blocks += $slot_blocks;
         }
@@ -477,6 +524,36 @@ copy, rather than the original.
         return ( _count_keystore_collisions( $!_blocks_by_key ) )[0];
     }
 
+
+=item count_keys_computed
+
+Count number of keys computed at each blocking level.
+
+This method counts the number of times each blocking key was calculated.
+
+It returns an arrayref containing one element for each blocking level. The
+returned array might contain fewer elements than C<blocking>, if all
+deduplicated objects are unique, and if not all blocking algorithms were needed
+to discover this fact.
+
+Note that the number of times a blocking key was calculated is often only a
+rough guide to how much time the blocking algorithm took in deduplicating the
+objects, because the size or complexity of the objects themselves are often a
+factor. For example, in deduplicating files, the time taken to compute a digest
+of the entire contents of the file is some function of the number of bytes in
+the file. On the other hand, finding the filesize of a file probably runs in a
+fixed amount of time.
+
+Objects are cumulatively blocked. That is, each successive blocking algorithm is
+used only to distinguish objects that the former algorithms failed to
+distinguish. Therefore, each digest function will be called at most the same
+number of times as the function before it. An optimally chosen series of digest
+algorithms will place the fastest, weakest ones at the front and the slowest,
+strongest last. In between, each algorithm should eliminate as large as possible
+a number of possible duplicates, so that by the very end, the final algorithm
+runs as few times as possible.
+
+=cut
 
     method count_keys_computed {
         my @num_keys;
@@ -499,41 +576,6 @@ copy, rather than the original.
 =head1 SEE ALSO
 
 L<Data::Dedup::Theory> for a discussion of the theory behind this module.
-
-
-=head1 FEATURES THAT WOULD BE NICE TO ADD
-
-=over
-
-=item *
-
-A method that would deeply compare multiple objects in each block, to
-conclusively dedup them.
-
-=item *
-
-Support fuzzy comparison algorithms (that depend on how closely two objects
-match, rather than a simple yea or nay).
-
-=item *
-
-Support for blocking algorithms that put the same object in multiple blocks.
-
-=item *
-
-Support for dynamic blocking algorithms (e.g., a sliding window) that generate a
-large number of (overlapping) blocks.
-
-=item *
-
-Dynamic selection of digest algorithms based on expected cost and effectiveness
-for each object.
-
-=item *
-
-Support for threaded execution to improve performance of CPU-heavy object sets.
-
-=back
 
 
 =head1 AUTHOR
