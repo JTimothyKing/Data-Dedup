@@ -114,7 +114,7 @@ SKIP: {
     my $file = $files[0];
     for (1..10) {
         my $link = mktemp( File::Spec->catfile($test_dir, 'X' x 10) );
-        symlink($file, $link) or die "cannot create symlink $link";
+        symlink($file, $link) or die "Can't create symlink $link";
     }
 
     my $dedup = Data::Dedup::Files->new(dir => $test_dir);
@@ -144,7 +144,7 @@ SKIP: {
     my $file = $files[0];
     for (1..10) {
         my $link = mktemp( File::Spec->catfile($test_dir, 'X' x 10) );
-        link($file, $link) or skip "cannot create hard link", 5;
+        link($file, $link) or skip "Can't create hard link", 5;
         push @files, $link;
     }
 
@@ -289,7 +289,7 @@ sub dedup_unreadable_files : Test(4) {
 
     warning_like {
         lives_ok { $dedup->scan() } "scan does not die on unreadable files";
-    } qr/cannot read file \Q$unreadable_file\E/,
+    } qr/Can't read file '\Q$unreadable_file\E'/,
         "scan emits appropriate warning on unreadable files";
 
     my $file_list = $dedup->duplicates;
