@@ -451,7 +451,10 @@ copy, rather than the original.
 
 =item count_collisions
 
-Count number of key collisions at each blocking level.
+Returns number of key collisions at each blocking level.
+
+    my $num_key_collisions = $engine->count_collisions;
+    print "Number of key collisions: ", (join ' ', @$num_key_collisions), "\n";
 
 This method counts the number of observed key collisions for each blocking
 level, i.e., corresponding with each item of L<C<blocking>|blocking>.
@@ -527,7 +530,10 @@ level contains two distinct objects, there is no way to detect it).
 
 =item count_keys_computed
 
-Count number of keys computed at each blocking level.
+Returns the number of times each blocking key was calculated at each blocking level.
+
+    my $num_keys_computed = $engine->count_keys_computed;
+    print "Number of times each key was computed: ", (join ' ', @$num_keys_computed), "\n";
 
 This method counts the number of times each blocking key was calculated.
 
