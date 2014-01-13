@@ -1,4 +1,4 @@
-package Data::Dedup::Files::DigestFactory; # for auto-placed symbols, like $VERSION
+package Data::Dedup::Files::DigestFactory;
 
 package Data::Dedup::Files::DigestFactory::_guts;
 use 5.016;
@@ -18,7 +18,8 @@ use List::Util 'min', 'max';
 
 =head1 NAME
 
-Data::Dedup::Files::DigestFactory - Generate file-digest blocking functions for Data::Dedup::Files
+Data::Dedup::Files::DigestFactory - Generate file-digest blocking functions for
+Data::Dedup::Files
 
 =head1 SYNOPSIS
 
@@ -164,7 +165,9 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
                 $last_cluster_offset -= $cluster_size;
                 $last_cluster_size = $cluster_size;
             }
-            return Digest::xxHash::xxhash( _retrieve_sample($file, $last_cluster_offset, $cluster_size), 0 );
+            return Digest::xxHash::xxhash(
+                _retrieve_sample($file, $last_cluster_offset, $cluster_size),
+                0 );
         },
     );
 
@@ -207,7 +210,9 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
                 $last_cluster_offset -= $cluster_size;
                 $last_cluster_size = $cluster_size;
             }
-            return _sha_data( _retrieve_sample($file, $last_cluster_offset, $cluster_size) );
+            return _sha_data(
+                _retrieve_sample($file, $last_cluster_offset, $cluster_size)
+            );
         },
     );
 

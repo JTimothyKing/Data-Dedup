@@ -1,4 +1,4 @@
-package Data::Dedup::Files; # for auto-placed symbols, like $VERSION
+package Data::Dedup::Files;
 
 package Data::Dedup::Files::_guts;
 use 5.016;
@@ -153,8 +153,9 @@ of the API to change in future.>
 
 =head2 Accessors and Mutators
 
-The value of any of these configuration keys can be set on or retrieved from an instantiated
-deduplicator object by calling the mutator/accessor method named after it:
+The value of any of these configuration keys can be set on or retrieved from an
+instantiated deduplicator object by calling the mutator/accessor method named
+after it:
 
     my $dir = $dedup->dir; # returns the directory to scan
     $dedup->dir( '/new/dir/to/scan' );

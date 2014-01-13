@@ -1,4 +1,4 @@
-package Data::Dedup::Engine; # for auto-placed symbols, like $VERSION
+package Data::Dedup::Engine;
 
 package Data::Dedup::Engine::_guts;
 use 5.016;
@@ -197,8 +197,8 @@ object by calling the accessor method named after it:
                     push @expanded_blocking, $blocking_elem;
 
                 } else {
-                    croak "blocking attribute must contain only blocking factories and coderefs;"
-                        . " the value at index $idx_blocking was of type "
+                    croak "blocking attribute must contain only blocking factories and"
+                        . " coderefs; the value at index $idx_blocking was of type "
                         . (ref($blocking_elem) || '(not a reference)');
                 }
             }
@@ -208,7 +208,8 @@ object by calling the accessor method named after it:
 
         croak "blocking attribute must be a blocking factory, a coderef,"
             . " or an arrayref of blocking factories and coderefs"
-            unless _is_array($!blocking) && List::MoreUtils::all { _is_code($_) } @{$!blocking};
+            unless _is_array($!blocking)
+                && List::MoreUtils::all { _is_code($_) } @{$!blocking};
     }
 
 
@@ -240,12 +241,13 @@ Returns the blocking keys that distinguish this block.
 
 This method returns an arrayref, which contains the values that were returned by
 each of the blocking functions for the objects in this block. The values are in
-the same order as the corresponding blocking functions (passed to
-L<< Data::Dedup::Engine->new|Data::Dedup::Engine/new >>). However, the array of values may be
-shorter than the list of blocking functions, if one or more of the later
-blocking functions was not needed to distinguish this block. (In this case, the
-block will only contain one object, because otherwise the engine would have used
-further blocking functions to attempt to distinguish the multiple objects.)
+the same order as the corresponding blocking functions (passed to L<<
+Data::Dedup::Engine->new|Data::Dedup::Engine/new >>). However, the array of
+values may be shorter than the list of blocking functions, if one or more of the
+later blocking functions was not needed to distinguish this block. (In this
+case, the block will only contain one object, because otherwise the engine would
+have used further blocking functions to attempt to distinguish the multiple
+objects.)
 
 Each block has a unique set of key values, distinguishing it from all other
 blocks, and distinguishing the (duplicate) objects in each block from the
@@ -360,7 +362,8 @@ $block->objects->[$idx] >>. (See L<objects>.)
         return $keystore;
     }
 
-    # Returns a reference to the new block created for the object, if a new block was created.
+    # Returns a reference to the new block created for the object, if a new
+    # block was created.
     sub _block($object, $blockingsubs, $rblockslot, $keys) {
         $keys //= [];
 
@@ -533,7 +536,8 @@ level contains two distinct objects, there is no way to detect it).
 Returns the number of times each blocking key was calculated at each blocking level.
 
     my $num_keys_computed = $engine->count_keys_computed;
-    print "Number of times each key was computed: ", (join ' ', @$num_keys_computed), "\n";
+    print "Number of times each key was computed: ",
+        (join ' ', @$num_keys_computed), "\n";
 
 This method counts the number of times each blocking key was calculated.
 

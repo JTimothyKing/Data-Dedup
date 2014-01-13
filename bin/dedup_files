@@ -34,6 +34,9 @@ dedup_files --dir /path/to/scan [options...]
     --version      Print version information and exit
     --write-rcfile Write current options to rcfile
 
+Options that are specified multiple times can also be specified as a
+comma-separated list.
+
 =head1 DESCRIPTION
 
 This program scans one or more directory trees and identifies files that contain
@@ -42,6 +45,68 @@ duplicate contents.
 The filenames are reported by default on standard out, or written to a file (if
 the --outfile option is given). Each distinct file is reported on its own line,
 with duplicates listed afterward, separated by tabs.
+
+=head1 ALGORITHMS
+
+The default algorithm sequence used is: filesize initial_xxhash final_xxhash sha.
+
+The following algorithms can be used with the --alg (-a) switch:
+
+=over
+
+=item filesize
+
+filesize - Uses the size of the file as a digest.
+
+=item sample
+
+first-cluster sample - Samples 128 bytes from the first cluster of the file.
+
+=item end_sample
+
+last-cluster sample - Samples 128 bytes from the last cluster of the file.
+
+=item mid_sample
+
+mid-file sample - Samples 128 bytes from the middle of the file.
+
+=item file_head
+
+first bytes of file - Uses the first 1024 bytes of the file as a digest.
+
+=item file_tail
+
+last bytes of file - Uses the last 1024 bytes of the file as a digest.
+
+=item fast_initial_xxhash
+
+first-half-cluster xxHash - xxHash of the first half-cluster of the file.
+
+=item initial_xxhash
+
+first-cluster xxHash - xxHash of the first cluster of the file.
+
+=item final_xxhash
+
+last-cluster xxHash - xxHash of the last cluster of the file.
+
+=item fast_initial_sha
+
+first-half-cluster SHA-1 - SHA-1 of the first half-cluster of the file.
+
+=item initial_sha
+
+first-cluster SHA-1 - SHA-1 of the first cluster of the file.
+
+=item final_sha
+
+last-cluster SHA-1 - SHA-1 of the last cluster of the file.
+
+=item sha
+
+SHA-1 - SHA-1 of the entire file.
+
+=back
 
 =head1 AUTHOR
 

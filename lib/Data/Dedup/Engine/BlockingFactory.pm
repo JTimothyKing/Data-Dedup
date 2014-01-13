@@ -1,4 +1,4 @@
-package Data::Dedup::Engine::BlockingFactory; # for auto-placed symbols, like $VERSION
+package Data::Dedup::Engine::BlockingFactory;
 
 package Data::Dedup::Engine::BlockingFactory::_guts;
 use 5.016;
@@ -10,7 +10,8 @@ use signatures 0.07;
 
 =head1 NAME
 
-Data::Dedup::Engine::BlockingFactory - A role for Data::Dedup::Engine blocking-function factories
+Data::Dedup::Engine::BlockingFactory - A role for Data::Dedup::Engine
+blocking-function factories
 
 =head1 DESCRIPTION
 

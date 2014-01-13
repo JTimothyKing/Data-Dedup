@@ -1,4 +1,4 @@
-package Data::Dedup::Engine::BlockingFunction; # for auto-placed symbols, like $VERSION
+package Data::Dedup::Engine::BlockingFunction;
 
 package Data::Dedup::Engine::BlockingFunction::_guts;
 use 5.016;
