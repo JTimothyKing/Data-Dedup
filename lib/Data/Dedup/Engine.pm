@@ -1,4 +1,5 @@
 package Data::Dedup::Engine;
+# VERSION: dist tool inserts version here
 
 package Data::Dedup::Engine::_guts;
 use 5.016;

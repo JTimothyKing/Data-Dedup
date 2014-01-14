@@ -1,4 +1,5 @@
 package Data::Dedup::Files::DigestFactory;
+# VERSION: dist tool inserts version here
 
 package Data::Dedup::Files::DigestFactory::_guts;
 use 5.016;

@@ -1,4 +1,5 @@
 package Data::Dedup::Files;
+# VERSION: dist tool inserts version here
 
 package Data::Dedup::Files::_guts;
 use 5.016;

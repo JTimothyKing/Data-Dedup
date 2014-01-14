@@ -1,4 +1,5 @@
 package Data::Dedup::Engine::BlockingFunction;
+# VERSION: dist tool inserts version here
 
 package Data::Dedup::Engine::BlockingFunction::_guts;
 use 5.016;
