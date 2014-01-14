@@ -34,8 +34,7 @@ class Data::Dedup::Files::DigestFactory with Data::Dedup::Engine::BlockingFactor
         return [
             $self->from_filesize,       # first blocking key: filesize
             $self->from_initial_xxhash, # second blocking key: first-cluster xxHash
-            $self->from_final_xxhash,   # third blocking key: last-cluster xxHash
-            $self->from_sha,            # fourth blocking key: SHA-1
+            $self->from_sha,            # last blocking key: SHA-1
         ];
     }
 
