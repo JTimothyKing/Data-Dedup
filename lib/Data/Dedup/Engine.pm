@@ -2,11 +2,12 @@ package Data::Dedup::Engine;
 # VERSION: dist tool inserts version here
 
 package Data::Dedup::Engine::_guts;
-use 5.016;
+use 5.019_009;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';
 use mop 0.03;
-use signatures 0.07;
 
 use List::MoreUtils 0.33 ();
 
@@ -365,7 +366,7 @@ $block->objects->[$idx] >>. (See L<objects>.)
 
     # Returns a reference to the new block created for the object, if a new
     # block was created.
-    sub _block($object, $blockingsubs, $rblockslot, $keys) {
+    sub _block($object, $blockingsubs, $rblockslot, $keys=undef) {
         $keys //= [];
 
         my $blockslot_isa = sub ($class) { _object_isa($$rblockslot, $class) };

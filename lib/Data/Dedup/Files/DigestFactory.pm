@@ -2,11 +2,12 @@ package Data::Dedup::Files::DigestFactory;
 # VERSION: dist tool inserts version here
 
 package Data::Dedup::Files::DigestFactory::_guts;
-use 5.016;
+use 5.019_009;
 use strict;
 use warnings;
+use feature 'signatures';
+no warnings 'experimental::signatures';
 use mop 0.03;
-use signatures 0.07;
 
 use Digest::SHA 5.82 ();
 use Digest::xxHash 1.01 ();
